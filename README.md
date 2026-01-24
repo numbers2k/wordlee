@@ -20,7 +20,7 @@ main/
 │   ├── bot.py
 │   ├── requirements.txt
 │   └── .env.example
-├── webapp/
+├── docs/
 │   ├── index.html
 │   ├── styles.css
 │   ├── script.js
@@ -31,7 +31,7 @@ main/
 ## Локальный запуск
 
 ```bash
-cd webapp && python3 -m http.server 8080
+cd docs && python3 -m http.server 8080
 ```
 
 ## Деплой
@@ -39,7 +39,7 @@ cd webapp && python3 -m http.server 8080
 ### Frontend (GitHub Pages)
 
 1. Создай репозиторий на GitHub
-2. Settings → Pages → Branch: main, folder: `/webapp`
+2. Settings → Pages → Branch: main, folder: `/docs`
 3. URL: `https://USERNAME.github.io/REPO/`
 
 ### Bot
