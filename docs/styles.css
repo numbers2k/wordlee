@@ -15,6 +15,7 @@
     --tile-size: min(62px, calc((100vw - 50px) / 5));
     --tile-gap: 5px;
     --tile-font-size: 2rem;
+    --key-height: 58px;
     --flip-duration: 0.5s;
 }
 
@@ -38,13 +39,14 @@ body {
     margin: 0 auto;
 }
 
-/* Header - только название бота */
+/* Header - название бота */
 .header {
     display: flex;
     align-items: center;
     justify-content: center;
     height: var(--header-height);
     padding: 0 16px;
+    border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
 }
 
@@ -54,30 +56,28 @@ body {
     font-weight: 500;
 }
 
-/* Toolbar - кнопки под заголовком */
+/* Toolbar - иконки по краям */
 .toolbar {
     display: flex;
-    justify-content: center;
-    gap: 12px;
+    justify-content: space-between;
+    align-items: center;
     padding: 8px 16px;
-    border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
 }
 
-.toolbar-btn {
+.icon-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    color: var(--text-primary);
+    border-radius: 4px;
     display: flex;
     align-items: center;
-    gap: 6px;
-    background: none;
-    border: 1px solid var(--border-color);
-    color: var(--text-secondary);
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    cursor: pointer;
+    justify-content: center;
 }
-.toolbar-btn:active { transform: scale(0.95); background: var(--bg-secondary); }
-.toolbar-btn svg { display: block; }
+.icon-btn:active { transform: scale(0.95); }
+.icon-btn svg { display: block; }
 
 /* Game area */
 .game-container {
@@ -123,46 +123,44 @@ body {
 .tile.win { animation: bounce 1s ease; }
 .row.shake { animation: shake 0.5s ease-in-out; }
 
-/* Hidden input for native keyboard */
-.hidden-input {
-    position: absolute;
-    left: -9999px;
-    opacity: 0;
-    width: 1px;
-    height: 1px;
-}
-
-/* Mobile controls */
-.mobile-controls {
-    display: none;
-    padding: 12px 16px;
-    padding-bottom: max(12px, env(safe-area-inset-bottom));
-    gap: 12px;
+/* Keyboard */
+.keyboard {
+    padding: 8px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
     flex-shrink: 0;
 }
 
-.control-btn {
-    flex: 1;
-    padding: 16px;
+.keyboard-row {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+.keyboard-row:last-child { margin-bottom: 0; }
+
+.key {
+    min-width: 28px;
+    height: var(--key-height);
+    padding: 0 8px;
+    background-color: var(--key-bg);
+    color: var(--key-text);
     border: none;
-    border-radius: 12px;
+    border-radius: 4px;
     font-size: 1rem;
     font-weight: 600;
+    text-transform: uppercase;
     cursor: pointer;
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    max-width: 43px;
 }
-.control-btn.primary {
-    background-color: var(--color-correct);
-    border-color: var(--color-correct);
-}
-.control-btn:active { transform: scale(0.98); }
-
-/* Show mobile controls only on touch devices */
-@media (hover: none) and (pointer: coarse) {
-    .mobile-controls { display: flex; }
-}
+.key:active { transform: scale(0.95); }
+.key-wide { min-width: 55px; max-width: 70px; flex: 1.5; font-size: 0.75rem; font-weight: 700; }
+.key.correct { background-color: var(--color-correct); color: white; }
+.key.present { background-color: var(--color-present); color: white; }
+.key.absent { background-color: var(--color-absent); color: white; }
 
 /* Animations */
 @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
@@ -321,7 +319,7 @@ body {
 .toast.hide { animation: fadeOut 0.3s ease forwards; }
 
 @media (max-height: 600px) {
-    :root { --tile-size: min(50px, calc((100vw - 50px) / 5)); --tile-font-size: 1.5rem; }
+    :root { --tile-size: min(50px, calc((100vw - 50px) / 5)); --tile-font-size: 1.5rem; --key-height: 48px; }
 }
 
 @media (min-width: 500px) { :root { --tile-size: 62px; } }
