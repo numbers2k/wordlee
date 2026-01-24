@@ -217,8 +217,7 @@ async def share_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         share_text = (
             "🎮 *Wordlee*\n\n"
             "Попробуй угадать слово из 5 букв за 6 попыток!\n\n"
-            f"👉 [@{BOT_USERNAME}](https://t.me/{BOT_USERNAME})\n\n"
-            "🟩🟨⬜ Увлекательная словесная головоломка на русском языке!"
+            f"👉 [@{BOT_USERNAME}](https://t.me/{BOT_USERNAME})"
         )
         
         await update.message.reply_text(
@@ -379,8 +378,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             share_text = (
                 "🎮 *Wordlee*\n\n"
                 "Попробуй угадать слово из 5 букв за 6 попыток!\n\n"
-                f"👉 [@{BOT_USERNAME}](https://t.me/{BOT_USERNAME})\n\n"
-                "🟩🟨⬜ Увлекательная словесная головоломка на русском языке!"
+                f"👉 [@{BOT_USERNAME}](https://t.me/{BOT_USERNAME})"
             )
             await query.edit_message_text(
                 share_text,
