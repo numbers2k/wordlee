@@ -41,16 +41,56 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="🎮 Играть", web_app=WebAppInfo(url=WEBAPP_URL))],
         [
             InlineKeyboardButton(text="📖 Правила", callback_data="help"),
-            InlineKeyboardButton(text="📊 Статистика", web_app=WebAppInfo(url=f"{WEBAPP_URL}?view=stats"))
+            InlineKeyboardButton(text="📊 Статистика", callback_data="stats")
         ],
-        [InlineKeyboardButton(text="📤 Поделиться", switch_inline_query=f"Попробуй Wordle RU! 🎮")]
+        [InlineKeyboardButton(text="📤 Поделиться", callback_data="share")],
+        [InlineKeyboardButton(text="ℹ️ О боте", callback_data="about")]
     ]
     return InlineKeyboardMarkup(keyboard)
 
 
 def get_play_keyboard() -> InlineKeyboardMarkup:
-    """Клавиатура только с кнопкой игры."""
-    keyboard = [[InlineKeyboardButton(text="🎮 Играть", web_app=WebAppInfo(url=WEBAPP_URL))]]
+    """Клавиатура с кнопкой игры и главным меню."""
+    keyboard = [
+        [InlineKeyboardButton(text="🎮 Играть", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+
+def get_stats_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура для статистики."""
+    keyboard = [
+        [InlineKeyboardButton(text="📊 Открыть статистику", web_app=WebAppInfo(url=f"{WEBAPP_URL}?view=stats"))],
+        [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+
+def get_help_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура для правил."""
+    keyboard = [
+        [InlineKeyboardButton(text="🎮 Играть", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+
+def get_share_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура для поделиться."""
+    keyboard = [
+        [InlineKeyboardButton(text="📤 Переслать друзьям", switch_inline_query=f"Играй в Wordle RU! 🎮")],
+        [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+
+def get_about_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура для информации о боте."""
+    keyboard = [
+        [InlineKeyboardButton(text="🎮 Играть", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
+    ]
     return InlineKeyboardMarkup(keyboard)
 
 
@@ -140,7 +180,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         
         await update.message.reply_text(
             help_text,
-            reply_markup=get_play_keyboard(),
+            reply_markup=get_help_keyboard(),
             parse_mode='Markdown'
         )
     except Exception as e:
@@ -154,7 +194,6 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             logger.warning("Received /stats but update.message is None")
             return
         logger.info(f"Received /stats from user {update.effective_user.id}")
-        keyboard = [[InlineKeyboardButton(text="📊 Открыть статистику", web_app=WebAppInfo(url=f"{WEBAPP_URL}?view=stats"))]]
         
         await update.message.reply_text(
             "📊 *Твоя статистика*\n\n"
@@ -165,7 +204,7 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             "• Лучшую серию\n"
             "• Распределение попыток\n\n"
             "Нажми кнопку ниже, чтобы посмотреть!",
-            reply_markup=InlineKeyboardMarkup(keyboard),
+            reply_markup=get_stats_keyboard(),
             parse_mode='Markdown'
         )
     except Exception as e:
@@ -179,21 +218,17 @@ async def share_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             logger.warning("Received /share but update.message is None")
             return
         logger.info(f"Received /share from user {update.effective_user.id}")
+        # Используем код-форматирование вместо Markdown для username, чтобы избежать курсива
         share_text = (
             "🎮 *Wordle RU*\n\n"
             "Попробуй угадать слово из 5 букв за 6 попыток!\n\n"
-            f"👉 @{BOT_USERNAME}\n\n"
+            f"👉 `@{BOT_USERNAME}`\n\n"
             "🟩🟨⬜ Увлекательная словесная головоломка на русском языке!"
         )
         
-        keyboard = [
-            [InlineKeyboardButton(text="📤 Переслать друзьям", switch_inline_query=f"Играй в Wordle RU! 🎮")],
-            [InlineKeyboardButton(text="🔗 Открыть в браузере", url=f"https://t.me/{BOT_USERNAME}")]
-        ]
-        
         await update.message.reply_text(
             share_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
+            reply_markup=get_share_keyboard(),
             parse_mode='Markdown'
         )
     except Exception as e:
@@ -215,14 +250,12 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             "*Особенности:*\n"
             "• Бесконечный режим игры\n"
             "• Автосохранение прогресса\n"
-            "• Адаптивный дизайн\n"
-            "• Работает на всех устройствах\n\n"
-            "_Создано с ❤️ для любителей слов_"
+            "• Работает на всех устройствах"
         )
         
         await update.message.reply_text(
             about_text,
-            reply_markup=get_play_keyboard(),
+            reply_markup=get_about_keyboard(),
             parse_mode='Markdown'
         )
     except Exception as e:
@@ -292,7 +325,25 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         query = update.callback_query
         await query.answer()
         
-        if query.data == "help":
+        if query.data == "main_menu":
+            user = update.effective_user
+            welcome_text = (
+                f"Привет, {user.first_name}! 👋\n\n"
+                "🎮 *Wordle RU* — угадай слово из 5 букв за 6 попыток!\n\n"
+                "🟩 Зелёный — буква на правильном месте\n"
+                "🟨 Жёлтый — буква есть, но не там\n"
+                "⬜ Серый — такой буквы нет в слове\n\n"
+                "♾️ Бесконечный режим — играй сколько хочешь!\n"
+                "📊 Статистика — отслеживай свой прогресс\n"
+                "📤 Делись результатами с друзьями!"
+            )
+            await query.edit_message_text(
+                welcome_text,
+                reply_markup=get_main_keyboard(),
+                parse_mode='Markdown'
+            )
+        
+        elif query.data == "help":
             help_text = (
                 "📖 *Как играть в Wordle RU*\n\n"
                 "*Цель:* угадать слово из 5 букв за 6 попыток.\n\n"
@@ -300,16 +351,70 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 "🟩 — буква угадана и стоит на своём месте\n"
                 "🟨 — буква есть в слове, но стоит не там\n"
                 "⬜ — такой буквы в слове нет\n\n"
+                "*Пример:*\n"
+                "Загадано: КНИГА\n"
+                "Попытка:  КОШКА\n"
+                "Результат: 🟩⬜⬜🟨🟩\n"
+                "_(К на месте, А есть но не там)_\n\n"
                 "*Советы:*\n"
                 "• Начинай с частых букв: А, О, Е, И, Н, Т, С, Р\n"
-                "• Используй разные буквы в первых попытках\n\n"
+                "• Используй разные буквы в первых попытках\n"
+                "• Следи за клавиатурой — она подсвечивает использованные буквы\n\n"
                 "Удачи! 🍀"
             )
             await query.edit_message_text(
                 help_text,
-                reply_markup=get_play_keyboard(),
+                reply_markup=get_help_keyboard(),
                 parse_mode='Markdown'
             )
+        
+        elif query.data == "stats":
+            stats_text = (
+                "📊 *Твоя статистика*\n\n"
+                "Статистика сохраняется в приложении и включает:\n"
+                "• Количество сыгранных игр\n"
+                "• Процент побед\n"
+                "• Текущую серию побед\n"
+                "• Лучшую серию\n"
+                "• Распределение попыток\n\n"
+                "Нажми кнопку ниже, чтобы посмотреть!"
+            )
+            await query.edit_message_text(
+                stats_text,
+                reply_markup=get_stats_keyboard(),
+                parse_mode='Markdown'
+            )
+        
+        elif query.data == "share":
+            share_text = (
+                "🎮 *Wordle RU*\n\n"
+                "Попробуй угадать слово из 5 букв за 6 попыток!\n\n"
+                f"👉 `@{BOT_USERNAME}`\n\n"
+                "🟩🟨⬜ Увлекательная словесная головоломка на русском языке!"
+            )
+            await query.edit_message_text(
+                share_text,
+                reply_markup=get_share_keyboard(),
+                parse_mode='Markdown'
+            )
+        
+        elif query.data == "about":
+            about_text = (
+                "ℹ️ *О боте Wordle RU*\n\n"
+                f"*Версия:* {BOT_VERSION}\n"
+                "*Словарь:* ~1500 слов\n"
+                "*Платформа:* Telegram Mini Apps\n\n"
+                "*Особенности:*\n"
+                "• Бесконечный режим игры\n"
+                "• Автосохранение прогресса\n"
+                "• Работает на всех устройствах"
+            )
+            await query.edit_message_text(
+                about_text,
+                reply_markup=get_about_keyboard(),
+                parse_mode='Markdown'
+            )
+            
     except Exception as e:
         logger.error(f"Error in handle_callback: {e}", exc_info=True)
 
