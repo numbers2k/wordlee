@@ -456,28 +456,44 @@ function getStorageKey() {
 
 function saveGameState() {
     const key = getStorageKey();
-    if (!key) return;
+    if (!key) {
+        debugLog('saveGameState: No key (endless mode), skipping save');
+        return;
+    }
     
     try {
+        // Глубокое копирование board чтобы избежать проблем с ссылками
+        const boardCopy = gameState.board.map(row => [...row]);
+        const evalsCopy = gameState.evaluations.map(row => row ? [...row] : null);
+        
         const state = {
-            board: gameState.board,
+            board: boardCopy,
             currentRow: gameState.currentRow,
             currentTile: gameState.currentTile,
             gameOver: gameState.gameOver,
             won: gameState.won,
-            evaluations: gameState.evaluations,
+            evaluations: evalsCopy,
             mode: gameState.mode,
-            targetWord: gameState.targetWord, // Save target word for restoration
+            targetWord: gameState.targetWord,
             gameNumber: gameState.gameNumber,
-            timestamp: Date.now() // Add timestamp for sync
+            timestamp: Date.now()
         };
         
-        localStorage.setItem(key, JSON.stringify(state));
-        debugLog('Game state saved to localStorage');
+        const stateJson = JSON.stringify(state);
+        localStorage.setItem(key, stateJson);
+        
+        debugLog('Saved game state:', {
+            key,
+            currentRow: state.currentRow,
+            currentTile: state.currentTile,
+            gameOver: state.gameOver,
+            boardFirstRow: state.board[0],
+            size: stateJson.length
+        });
         
         // Also save to Telegram Cloud Storage if available
         if (tg && tg.CloudStorage) {
-            tg.CloudStorage.setItem(key, JSON.stringify(state), (error) => {
+            tg.CloudStorage.setItem(key, stateJson, (error) => {
                 if (error) {
                     debugLog('Cloud storage save failed:', error);
                 } else {
@@ -487,20 +503,42 @@ function saveGameState() {
         }
     } catch (e) {
         console.error('Save failed:', e);
+        debugLog('Save error:', e.message);
     }
 }
 
 function loadGameState() {
     const key = getStorageKey();
-    if (!key) return null;
+    debugLog('Loading game state, key:', key);
+    
+    if (!key) {
+        debugLog('No storage key (not daily mode)');
+        return null;
+    }
     
     try {
         const saved = localStorage.getItem(key);
-        const localState = saved ? JSON.parse(saved) : null;
-        debugLog('Loaded from localStorage:', localState ? 'found' : 'not found');
+        
+        if (!saved) {
+            debugLog('No saved state found in localStorage');
+            return null;
+        }
+        
+        const localState = JSON.parse(saved);
+        debugLog('Loaded state from localStorage:', {
+            hasBoard: !!localState.board,
+            boardRows: localState.board ? localState.board.length : 0,
+            currentRow: localState.currentRow,
+            currentTile: localState.currentTile,
+            gameOver: localState.gameOver,
+            hasTargetWord: !!localState.targetWord,
+            evaluationsCount: localState.evaluations ? localState.evaluations.filter(e => e).length : 0
+        });
+        
         return localState;
     } catch (e) {
         console.error('Load failed:', e);
+        debugLog('Load error:', e.message);
         return null;
     }
 }
@@ -533,6 +571,19 @@ function setupAutosave() {
 }
 
 function validateAndFixState(state) {
+    // Убедимся что evaluations это массив
+    if (!Array.isArray(state.evaluations)) {
+        state.evaluations = [];
+    }
+    
+    // Убедимся что board это массив массивов
+    if (!Array.isArray(state.board)) {
+        state.board = [];
+        for (let i = 0; i < MAX_ATTEMPTS; i++) {
+            state.board.push(new Array(WORD_LENGTH).fill(''));
+        }
+    }
+    
     // Найти правильный currentRow на основе заполненных строк
     let completedRows = 0;
     for (let i = 0; i < MAX_ATTEMPTS; i++) {
@@ -544,17 +595,27 @@ function validateAndFixState(state) {
     // Если игра не окончена, currentRow должен быть следующей пустой строкой
     if (!state.gameOver) {
         state.currentRow = Math.min(completedRows, MAX_ATTEMPTS - 1);
-        // Проверяем currentTile
+        // Проверяем currentTile - считаем непустые буквы в текущем ряду
         const currentRowContent = state.board[state.currentRow] || [];
-        state.currentTile = currentRowContent.filter(c => c !== '').length;
+        state.currentTile = currentRowContent.filter(c => c && c !== '').length;
     }
+    
+    debugLog('validateAndFixState result:', {
+        completedRows,
+        currentRow: state.currentRow,
+        currentTile: state.currentTile,
+        gameOver: state.gameOver
+    });
     
     return state;
 }
 
 function restoreGameState(state) {
+    debugLog('Restoring game state, raw state:', JSON.stringify(state).substring(0, 500));
+    
     state = validateAndFixState(state);
     
+    // Копируем состояние
     gameState.board = state.board;
     gameState.currentRow = state.currentRow;
     gameState.currentTile = state.currentTile;
@@ -563,22 +624,39 @@ function restoreGameState(state) {
     gameState.evaluations = state.evaluations || [];
     gameState.mode = state.mode || GAME_MODE.DAILY;
     
-    for (let row = 0; row < state.board.length; row++) {
+    debugLog('After restore - currentRow:', gameState.currentRow, 'currentTile:', gameState.currentTile);
+    
+    // Восстанавливаем визуальное состояние доски
+    for (let row = 0; row < MAX_ATTEMPTS; row++) {
+        const rowData = state.board[row];
+        if (!rowData) continue;
+        
         for (let col = 0; col < WORD_LENGTH; col++) {
-            const letter = state.board[row][col];
-            if (letter) {
-                const tile = document.querySelector(`.tile[data-row="${row}"][data-col="${col}"]`);
-                if (tile) {
-                    tile.textContent = letter;
-                    tile.classList.add('filled');
-                    if (state.evaluations[row] && state.evaluations[row][col]) {
-                        tile.classList.add(state.evaluations[row][col]);
-                        updateKeyboard(letter, state.evaluations[row][col]);
-                    }
+            const letter = rowData[col];
+            const tile = document.querySelector(`.tile[data-row="${row}"][data-col="${col}"]`);
+            
+            if (!tile) {
+                debugLog(`Tile not found: row=${row}, col=${col}`);
+                continue;
+            }
+            
+            if (letter && letter !== '') {
+                tile.textContent = letter;
+                tile.classList.add('filled');
+                
+                // Добавляем цвета только для оценённых рядов
+                const rowEval = state.evaluations[row];
+                if (rowEval && rowEval[col]) {
+                    tile.classList.add(rowEval[col]);
+                    updateKeyboard(letter, rowEval[col]);
                 }
+                
+                debugLog(`Restored tile [${row}][${col}]: "${letter}", eval: ${rowEval ? rowEval[col] : 'none'}`);
             }
         }
     }
+    
+    debugLog('Game state restored successfully');
 }
 
 function startNewGame() {
@@ -605,8 +683,13 @@ function startNewGame() {
 }
 
 function startDailyGame() {
+    debugLog('Starting daily game...');
+    
+    const dailyWord = getDailyWord();
+    const gameNum = getGameNumber();
+    
     gameState = {
-        targetWord: getDailyWord(),
+        targetWord: dailyWord,
         currentRow: 0,
         currentTile: 0,
         board: [],
@@ -614,8 +697,11 @@ function startDailyGame() {
         won: false,
         evaluations: [],
         mode: GAME_MODE.DAILY,
-        gameNumber: getGameNumber()
+        gameNumber: gameNum
     };
+    
+    debugLog('Initial gameState created, targetWord:', dailyWord, 'gameNumber:', gameNum);
+    
     createBoard();
     resetKeyboard();
     
@@ -625,14 +711,25 @@ function startDailyGame() {
         answerDisplay.remove();
     }
     
+    // Try to restore saved game
     const saved = loadGameState();
-    if (saved) {
+    
+    if (saved && saved.board && saved.board.length > 0) {
+        debugLog('Found saved state, attempting restore...');
+        
         // Restore target word from saved state (important for consistency)
         if (saved.targetWord) {
             gameState.targetWord = saved.targetWord;
+            debugLog('Using saved targetWord:', saved.targetWord);
         }
+        
         restoreGameState(saved);
-        debugLog('Restored game state, targetWord:', gameState.targetWord);
+        
+        debugLog('Game restored - currentRow:', gameState.currentRow, 
+                 'currentTile:', gameState.currentTile,
+                 'gameOver:', gameState.gameOver);
+    } else {
+        debugLog('No valid saved state, starting fresh game');
     }
 }
 
