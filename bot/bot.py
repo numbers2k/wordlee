@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 BOT_TOKEN = os.environ['BOT_TOKEN']
 WEBAPP_URL = os.getenv('WEBAPP_URL', 'https://numbers2k.github.io/wordlee')
 BOT_USERNAME = os.getenv('BOT_USERNAME', 'wordlee_ru_bot')
-BOT_VERSION = '1.1.0'
+BOT_VERSION = '1.2.0'
 
 
 def get_main_keyboard() -> InlineKeyboardMarkup:
@@ -239,7 +239,8 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         about_text = (
             "ℹ️ *О боте Wordlee*\n\n"
             f"*Версия:* {BOT_VERSION}\n"
-            "*Словарь:* ~1500 слов\n"
+            "*Словарь:* 26,540 слов\n"
+            "*Автор:* [@boik_off](https://t.me/boik_off)\n"
             "*Платформа:* Telegram Mini Apps\n\n"
             "*Особенности:*\n"
             "• Бесконечный режим игры\n"
@@ -390,7 +391,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             about_text = (
                 "ℹ️ *О боте Wordlee*\n\n"
                 f"*Версия:* {BOT_VERSION}\n"
-                "*Словарь:* ~1500 слов\n"
+                "*Словарь:* 26,540 слов\n"
+                "*Автор:* [@boik_off](https://t.me/boik_off)\n"
                 "*Платформа:* Telegram Mini Apps\n\n"
                 "*Особенности:*\n"
                 "• Бесконечный режим игры\n"
@@ -507,8 +509,6 @@ def main() -> None:
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
         logger.info("Text message handler registered")
         
-        # Обработчик неизвестных команд НЕ добавляем - CommandHandler сам обработает неизвестные команды
-        # Если команда не найдена, CommandHandler просто не вызовет обработчик
         
         # Обработчик ошибок
         application.add_error_handler(error_handler)

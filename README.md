@@ -2,6 +2,8 @@
 
 Русская версия популярной игры Wordlee для Telegram.
 
+**Автор:** [@boik_off](https://t.me/boik_off)
+
 **Играть:** [@wordlee_ru_bot](https://t.me/wordlee_ru_bot)
 
 ## Скриншоты
@@ -39,7 +41,7 @@ wordlee/
 │   ├── index.html      # Разметка
 │   ├── styles.css      # Стили + responsive
 │   ├── script.js       # Игровая логика
-│   └── words.js        # Словарь (~1500 слов)
+│   └── words.js        # Словарь (26,540 слов)
 ├── bot/                # Telegram Bot
 │   ├── bot.py          # Команды бота
 │   ├── requirements.txt
