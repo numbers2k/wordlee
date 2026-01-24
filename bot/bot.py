@@ -1,70 +1,347 @@
 #!/usr/bin/env python3
-"""Wordle RU - Telegram Bot"""
+"""Wordle RU - Telegram Bot
+
+Полнофункциональный бот для игры Wordle на русском языке.
+Поддерживает личные чаты и группы.
+"""
 
 import os
 import logging
 from dotenv import load_dotenv
 from telegram import Update, WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup, MenuButtonWebApp
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import (
+    Application, 
+    CommandHandler, 
+    MessageHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    filters
+)
+from telegram.constants import ChatType
 
 load_dotenv()
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+# Logging configuration
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
 logger = logging.getLogger(__name__)
 
+# Bot configuration
 BOT_TOKEN = os.environ['BOT_TOKEN']
 WEBAPP_URL = os.getenv('WEBAPP_URL', 'https://numbers2k.github.io/wordlee')
+BOT_USERNAME = os.getenv('BOT_USERNAME', 'wordlee_ru_bot')
+BOT_VERSION = '1.1.0'
+
+
+def get_main_keyboard() -> InlineKeyboardMarkup:
+    """Создаёт основную клавиатуру с кнопками."""
+    keyboard = [
+        [InlineKeyboardButton(text="🎮 Играть", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [
+            InlineKeyboardButton(text="📖 Правила", callback_data="help"),
+            InlineKeyboardButton(text="📊 Статистика", web_app=WebAppInfo(url=f"{WEBAPP_URL}?view=stats"))
+        ],
+        [InlineKeyboardButton(text="📤 Поделиться", switch_inline_query=f"Попробуй Wordle RU! 🎮")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+
+def get_play_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура только с кнопкой игры."""
+    keyboard = [[InlineKeyboardButton(text="🎮 Играть", web_app=WebAppInfo(url=WEBAPP_URL))]]
+    return InlineKeyboardMarkup(keyboard)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработчик команды /start — приветствие и главное меню."""
     user = update.effective_user
-    keyboard = [[InlineKeyboardButton(text="🎮 Играть", web_app=WebAppInfo(url=WEBAPP_URL))]]
+    chat_type = update.effective_chat.type
+    
+    # Разное приветствие для личных чатов и групп
+    if chat_type == ChatType.PRIVATE:
+        welcome_text = (
+            f"Привет, {user.first_name}! 👋\n\n"
+            "🎮 *Wordle RU* — угадай слово из 5 букв за 6 попыток!\n\n"
+            "🟩 Зелёный — буква на правильном месте\n"
+            "🟨 Жёлтый — буква есть, но не там\n"
+            "⬜ Серый — такой буквы нет в слове\n\n"
+            "♾️ Бесконечный режим — играй сколько хочешь!\n"
+            "📊 Статистика — отслеживай свой прогресс\n"
+            "📤 Делись результатами с друзьями!"
+        )
+    else:
+        welcome_text = (
+            f"Привет, {update.effective_chat.title}! 👋\n\n"
+            "🎮 *Wordle RU* теперь и в этом чате!\n\n"
+            "Угадай слово из 5 букв за 6 попыток.\n"
+            "Нажми кнопку ниже, чтобы начать игру!"
+        )
     
     await update.message.reply_text(
-        f"Привет, {user.first_name}! 👋\n\n"
-        "🔤 *Wordle* — угадай слово из 5 букв за 6 попыток!\n\n"
-        "📗 Зелёный — буква на месте\n"
-        "📒 Жёлтый — буква есть, но не там\n"
-        "⬜ Серый — буквы нет в слове",
-        reply_markup=InlineKeyboardMarkup(keyboard),
+        welcome_text,
+        reply_markup=get_main_keyboard(),
         parse_mode='Markdown'
+    )
+    logger.info(f"User {user.id} ({user.username}) started the bot in {chat_type}")
+
+
+async def play_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработчик команды /play — быстрый запуск игры."""
+    await update.message.reply_text(
+        "🎯 Нажми кнопку, чтобы начать игру!",
+        reply_markup=get_play_keyboard()
     )
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработчик команды /help — правила игры."""
+    help_text = (
+        "📖 *Как играть в Wordle RU*\n\n"
+        "*Цель:* угадать слово из 5 букв за 6 попыток.\n\n"
+        "*Подсказки после каждой попытки:*\n"
+        "🟩 — буква угадана и стоит на своём месте\n"
+        "🟨 — буква есть в слове, но стоит не там\n"
+        "⬜ — такой буквы в слове нет\n\n"
+        "*Пример:*\n"
+        "Загадано: КНИГА\n"
+        "Попытка:  КОШКА\n"
+        "Результат: 🟩⬜⬜🟨🟩\n"
+        "_(К на месте, А есть но не там)_\n\n"
+        "*Советы:*\n"
+        "• Начинай с частых букв: А, О, Е, И, Н, Т, С, Р\n"
+        "• Используй разные буквы в первых попытках\n"
+        "• Следи за клавиатурой — она подсвечивает использованные буквы\n\n"
+        "Удачи! 🍀"
+    )
+    
     await update.message.reply_text(
-        "🎯 *Как играть:*\n\n"
-        "1. Введите слово из 5 букв\n"
-        "2. Смотрите подсказки:\n"
-        "   🟩 — буква угадана и на месте\n"
-        "   🟨 — буква есть, но не там\n"
-        "   ⬜ — такой буквы нет\n"
-        "3. Угадайте за 6 попыток!",
+        help_text,
+        reply_markup=get_play_keyboard(),
         parse_mode='Markdown'
     )
 
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    keyboard = [[InlineKeyboardButton(text="📊 Статистика", web_app=WebAppInfo(url=f"{WEBAPP_URL}?view=stats"))]]
+    """Обработчик команды /stats — статистика игрока."""
+    keyboard = [[InlineKeyboardButton(text="📊 Открыть статистику", web_app=WebAppInfo(url=f"{WEBAPP_URL}?view=stats"))]]
+    
     await update.message.reply_text(
-        "Статистика сохраняется в приложении.",
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        "📊 *Твоя статистика*\n\n"
+        "Статистика сохраняется в приложении и включает:\n"
+        "• Количество сыгранных игр\n"
+        "• Процент побед\n"
+        "• Текущую серию побед\n"
+        "• Лучшую серию\n"
+        "• Распределение попыток\n\n"
+        "Нажми кнопку ниже, чтобы посмотреть!",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='Markdown'
     )
+
+
+async def share_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработчик команды /share — поделиться ботом."""
+    share_text = (
+        "🎮 *Wordle RU*\n\n"
+        "Попробуй угадать слово из 5 букв за 6 попыток!\n\n"
+        f"👉 @{BOT_USERNAME}\n\n"
+        "🟩🟨⬜ Увлекательная словесная головоломка на русском языке!"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton(text="📤 Переслать друзьям", switch_inline_query=f"Играй в Wordle RU! 🎮")],
+        [InlineKeyboardButton(text="🔗 Открыть в браузере", url=f"https://t.me/{BOT_USERNAME}")]
+    ]
+    
+    await update.message.reply_text(
+        share_text,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='Markdown'
+    )
+
+
+async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработчик команды /about — информация о боте."""
+    about_text = (
+        "ℹ️ *О боте Wordle RU*\n\n"
+        f"*Версия:* {BOT_VERSION}\n"
+        "*Словарь:* ~1500 слов\n"
+        "*Платформа:* Telegram Mini Apps\n\n"
+        "*Особенности:*\n"
+        "• Бесконечный режим игры\n"
+        "• Автосохранение прогресса\n"
+        "• Адаптивный дизайн\n"
+        "• Работает на всех устройствах\n\n"
+        "_Создано с ❤️ для любителей слов_"
+    )
+    
+    await update.message.reply_text(
+        about_text,
+        reply_markup=get_play_keyboard(),
+        parse_mode='Markdown'
+    )
+
+
+async def handle_new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработчик добавления бота в группу."""
+    for member in update.message.new_chat_members:
+        if member.id == context.bot.id:
+            welcome_text = (
+                "👋 Привет! Спасибо, что добавили меня!\n\n"
+                "🎮 *Wordle RU* — угадай слово из 5 букв за 6 попыток.\n\n"
+                "*Команды:*\n"
+                "/play — начать игру\n"
+                "/help — правила\n"
+                "/stats — статистика\n\n"
+                "Нажмите кнопку ниже, чтобы начать играть!"
+            )
+            
+            await update.message.reply_text(
+                welcome_text,
+                reply_markup=get_play_keyboard(),
+                parse_mode='Markdown'
+            )
+            logger.info(f"Bot added to group: {update.effective_chat.title} ({update.effective_chat.id})")
+            break
+
+
+async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработчик текстовых сообщений в личных чатах."""
+    # Только для личных чатов
+    if update.effective_chat.type != ChatType.PRIVATE:
+        return
+    
+    text = update.message.text.lower().strip()
+    
+    # Проверяем на ключевые слова
+    if any(word in text for word in ['играть', 'игра', 'play', 'старт', 'начать']):
+        await play_command(update, context)
+    elif any(word in text for word in ['помощь', 'правила', 'help', 'как']):
+        await help_command(update, context)
+    elif any(word in text for word in ['стат', 'счёт', 'результат', 'stats']):
+        await stats_command(update, context)
+    else:
+        # Стандартный ответ
+        await update.message.reply_text(
+            "🎮 Чтобы начать игру, нажми кнопку ниже или используй команды:\n\n"
+            "/play — начать игру\n"
+            "/help — правила\n"
+            "/stats — статистика\n"
+            "/share — поделиться\n"
+            "/about — о боте",
+            reply_markup=get_play_keyboard()
+        )
+
+
+async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработчик нажатий на inline-кнопки."""
+    query = update.callback_query
+    await query.answer()
+    
+    if query.data == "help":
+        help_text = (
+            "📖 *Как играть в Wordle RU*\n\n"
+            "*Цель:* угадать слово из 5 букв за 6 попыток.\n\n"
+            "*Подсказки после каждой попытки:*\n"
+            "🟩 — буква угадана и стоит на своём месте\n"
+            "🟨 — буква есть в слове, но стоит не там\n"
+            "⬜ — такой буквы в слове нет\n\n"
+            "*Советы:*\n"
+            "• Начинай с частых букв: А, О, Е, И, Н, Т, С, Р\n"
+            "• Используй разные буквы в первых попытках\n\n"
+            "Удачи! 🍀"
+        )
+        await query.edit_message_text(
+            help_text,
+            reply_markup=get_play_keyboard(),
+            parse_mode='Markdown'
+        )
+
+
+async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработчик неизвестных команд."""
+    await update.message.reply_text(
+        "🤔 Такой команды нет.\n\n"
+        "*Доступные команды:*\n"
+        "/start — главное меню\n"
+        "/play — начать игру\n"
+        "/help — правила\n"
+        "/stats — статистика\n"
+        "/share — поделиться\n"
+        "/about — о боте",
+        reply_markup=get_play_keyboard(),
+        parse_mode='Markdown'
+    )
+
+
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработчик ошибок."""
+    logger.error(f"Exception while handling an update: {context.error}")
+    
+    # Пытаемся уведомить пользователя
+    if update and hasattr(update, 'effective_message') and update.effective_message:
+        try:
+            await update.effective_message.reply_text(
+                "😅 Произошла ошибка. Попробуй ещё раз!",
+                reply_markup=get_play_keyboard()
+            )
+        except Exception as e:
+            logger.error(f"Failed to send error message: {e}")
 
 
 async def post_init(application: Application) -> None:
+    """Инициализация бота после запуска."""
+    # Установка кнопки меню
     await application.bot.set_chat_menu_button(
-        menu_button=MenuButtonWebApp(text="🎮 Играть", web_app=WebAppInfo(url=WEBAPP_URL))
+        menu_button=MenuButtonWebApp(text="Wordlee!", web_app=WebAppInfo(url=WEBAPP_URL))
     )
-    logger.info("Bot configured")
+    
+    # Установка команд бота
+    commands = [
+        ("start", "🎮 Главное меню"),
+        ("play", "🎯 Начать игру"),
+        ("help", "📖 Правила игры"),
+        ("stats", "📊 Моя статистика"),
+        ("share", "📤 Поделиться"),
+        ("about", "ℹ️ О боте"),
+    ]
+    await application.bot.set_my_commands(commands)
+    
+    logger.info("Bot initialized successfully")
 
 
 def main() -> None:
+    """Запуск бота."""
+    # Создание приложения
     application = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
+    
+    # Команды
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("play", play_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("stats", stats_command))
-    logger.info("Starting bot...")
+    application.add_handler(CommandHandler("share", share_command))
+    application.add_handler(CommandHandler("about", about_command))
+    
+    # Обработчик inline-кнопок
+    application.add_handler(CallbackQueryHandler(handle_callback))
+    
+    # Обработчик добавления бота в группу
+    application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, handle_new_chat_members))
+    
+    # Обработчик неизвестных команд (должен быть перед обработчиком текста)
+    application.add_handler(MessageHandler(filters.COMMAND, unknown_command))
+    
+    # Обработчик текстовых сообщений
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
+    
+    # Обработчик ошибок
+    application.add_error_handler(error_handler)
+    
+    # Запуск бота
+    logger.info("Starting Wordle RU bot...")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
