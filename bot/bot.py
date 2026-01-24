@@ -56,132 +56,173 @@ def get_play_keyboard() -> InlineKeyboardMarkup:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /start — приветствие и главное меню."""
-    user = update.effective_user
-    chat_type = update.effective_chat.type
-    
-    # Разное приветствие для личных чатов и групп
-    if chat_type == ChatType.PRIVATE:
-        welcome_text = (
-            f"Привет, {user.first_name}! 👋\n\n"
-            "🎮 *Wordle RU* — угадай слово из 5 букв за 6 попыток!\n\n"
-            "🟩 Зелёный — буква на правильном месте\n"
-            "🟨 Жёлтый — буква есть, но не там\n"
-            "⬜ Серый — такой буквы нет в слове\n\n"
-            "♾️ Бесконечный режим — играй сколько хочешь!\n"
-            "📊 Статистика — отслеживай свой прогресс\n"
-            "📤 Делись результатами с друзьями!"
+    try:
+        user = update.effective_user
+        chat_type = update.effective_chat.type
+        logger.info(f"Received /start from user {user.id} ({user.username}) in {chat_type}")
+        
+        # Разное приветствие для личных чатов и групп
+        if chat_type == ChatType.PRIVATE:
+            welcome_text = (
+                f"Привет, {user.first_name}! 👋\n\n"
+                "🎮 *Wordle RU* — угадай слово из 5 букв за 6 попыток!\n\n"
+                "🟩 Зелёный — буква на правильном месте\n"
+                "🟨 Жёлтый — буква есть, но не там\n"
+                "⬜ Серый — такой буквы нет в слове\n\n"
+                "♾️ Бесконечный режим — играй сколько хочешь!\n"
+                "📊 Статистика — отслеживай свой прогресс\n"
+                "📤 Делись результатами с друзьями!"
+            )
+        else:
+            welcome_text = (
+                f"Привет, {update.effective_chat.title}! 👋\n\n"
+                "🎮 *Wordle RU* теперь и в этом чате!\n\n"
+                "Угадай слово из 5 букв за 6 попыток.\n"
+                "Нажми кнопку ниже, чтобы начать игру!"
+            )
+        
+        await update.message.reply_text(
+            welcome_text,
+            reply_markup=get_main_keyboard(),
+            parse_mode='Markdown'
         )
-    else:
-        welcome_text = (
-            f"Привет, {update.effective_chat.title}! 👋\n\n"
-            "🎮 *Wordle RU* теперь и в этом чате!\n\n"
-            "Угадай слово из 5 букв за 6 попыток.\n"
-            "Нажми кнопку ниже, чтобы начать игру!"
-        )
-    
-    await update.message.reply_text(
-        welcome_text,
-        reply_markup=get_main_keyboard(),
-        parse_mode='Markdown'
-    )
-    logger.info(f"User {user.id} ({user.username}) started the bot in {chat_type}")
+        logger.info(f"Successfully sent /start response to user {user.id}")
+    except Exception as e:
+        logger.error(f"Error in start handler: {e}", exc_info=True)
+        if update.message:
+            await update.message.reply_text("😅 Произошла ошибка. Попробуй ещё раз!")
 
 
 async def play_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /play — быстрый запуск игры."""
-    await update.message.reply_text(
-        "🎯 Нажми кнопку, чтобы начать игру!",
-        reply_markup=get_play_keyboard()
-    )
+    try:
+        if not update.message:
+            logger.warning("Received /play but update.message is None")
+            return
+        logger.info(f"Received /play from user {update.effective_user.id}")
+        await update.message.reply_text(
+            "🎯 Нажми кнопку, чтобы начать игру!",
+            reply_markup=get_play_keyboard()
+        )
+    except Exception as e:
+        logger.error(f"Error in play_command: {e}", exc_info=True)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /help — правила игры."""
-    help_text = (
-        "📖 *Как играть в Wordle RU*\n\n"
-        "*Цель:* угадать слово из 5 букв за 6 попыток.\n\n"
-        "*Подсказки после каждой попытки:*\n"
-        "🟩 — буква угадана и стоит на своём месте\n"
-        "🟨 — буква есть в слове, но стоит не там\n"
-        "⬜ — такой буквы в слове нет\n\n"
-        "*Пример:*\n"
-        "Загадано: КНИГА\n"
-        "Попытка:  КОШКА\n"
-        "Результат: 🟩⬜⬜🟨🟩\n"
-        "_(К на месте, А есть но не там)_\n\n"
-        "*Советы:*\n"
-        "• Начинай с частых букв: А, О, Е, И, Н, Т, С, Р\n"
-        "• Используй разные буквы в первых попытках\n"
-        "• Следи за клавиатурой — она подсвечивает использованные буквы\n\n"
-        "Удачи! 🍀"
-    )
-    
-    await update.message.reply_text(
-        help_text,
-        reply_markup=get_play_keyboard(),
-        parse_mode='Markdown'
-    )
+    try:
+        if not update.message:
+            logger.warning("Received /help but update.message is None")
+            return
+        logger.info(f"Received /help from user {update.effective_user.id}")
+        help_text = (
+            "📖 *Как играть в Wordle RU*\n\n"
+            "*Цель:* угадать слово из 5 букв за 6 попыток.\n\n"
+            "*Подсказки после каждой попытки:*\n"
+            "🟩 — буква угадана и стоит на своём месте\n"
+            "🟨 — буква есть в слове, но стоит не там\n"
+            "⬜ — такой буквы в слове нет\n\n"
+            "*Пример:*\n"
+            "Загадано: КНИГА\n"
+            "Попытка:  КОШКА\n"
+            "Результат: 🟩⬜⬜🟨🟩\n"
+            "_(К на месте, А есть но не там)_\n\n"
+            "*Советы:*\n"
+            "• Начинай с частых букв: А, О, Е, И, Н, Т, С, Р\n"
+            "• Используй разные буквы в первых попытках\n"
+            "• Следи за клавиатурой — она подсвечивает использованные буквы\n\n"
+            "Удачи! 🍀"
+        )
+        
+        await update.message.reply_text(
+            help_text,
+            reply_markup=get_play_keyboard(),
+            parse_mode='Markdown'
+        )
+    except Exception as e:
+        logger.error(f"Error in help_command: {e}", exc_info=True)
 
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /stats — статистика игрока."""
-    keyboard = [[InlineKeyboardButton(text="📊 Открыть статистику", web_app=WebAppInfo(url=f"{WEBAPP_URL}?view=stats"))]]
-    
-    await update.message.reply_text(
-        "📊 *Твоя статистика*\n\n"
-        "Статистика сохраняется в приложении и включает:\n"
-        "• Количество сыгранных игр\n"
-        "• Процент побед\n"
-        "• Текущую серию побед\n"
-        "• Лучшую серию\n"
-        "• Распределение попыток\n\n"
-        "Нажми кнопку ниже, чтобы посмотреть!",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode='Markdown'
-    )
+    try:
+        if not update.message:
+            logger.warning("Received /stats but update.message is None")
+            return
+        logger.info(f"Received /stats from user {update.effective_user.id}")
+        keyboard = [[InlineKeyboardButton(text="📊 Открыть статистику", web_app=WebAppInfo(url=f"{WEBAPP_URL}?view=stats"))]]
+        
+        await update.message.reply_text(
+            "📊 *Твоя статистика*\n\n"
+            "Статистика сохраняется в приложении и включает:\n"
+            "• Количество сыгранных игр\n"
+            "• Процент побед\n"
+            "• Текущую серию побед\n"
+            "• Лучшую серию\n"
+            "• Распределение попыток\n\n"
+            "Нажми кнопку ниже, чтобы посмотреть!",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='Markdown'
+        )
+    except Exception as e:
+        logger.error(f"Error in stats_command: {e}", exc_info=True)
 
 
 async def share_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /share — поделиться ботом."""
-    share_text = (
-        "🎮 *Wordle RU*\n\n"
-        "Попробуй угадать слово из 5 букв за 6 попыток!\n\n"
-        f"👉 @{BOT_USERNAME}\n\n"
-        "🟩🟨⬜ Увлекательная словесная головоломка на русском языке!"
-    )
-    
-    keyboard = [
-        [InlineKeyboardButton(text="📤 Переслать друзьям", switch_inline_query=f"Играй в Wordle RU! 🎮")],
-        [InlineKeyboardButton(text="🔗 Открыть в браузере", url=f"https://t.me/{BOT_USERNAME}")]
-    ]
-    
-    await update.message.reply_text(
-        share_text,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode='Markdown'
-    )
+    try:
+        if not update.message:
+            logger.warning("Received /share but update.message is None")
+            return
+        logger.info(f"Received /share from user {update.effective_user.id}")
+        share_text = (
+            "🎮 *Wordle RU*\n\n"
+            "Попробуй угадать слово из 5 букв за 6 попыток!\n\n"
+            f"👉 @{BOT_USERNAME}\n\n"
+            "🟩🟨⬜ Увлекательная словесная головоломка на русском языке!"
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton(text="📤 Переслать друзьям", switch_inline_query=f"Играй в Wordle RU! 🎮")],
+            [InlineKeyboardButton(text="🔗 Открыть в браузере", url=f"https://t.me/{BOT_USERNAME}")]
+        ]
+        
+        await update.message.reply_text(
+            share_text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='Markdown'
+        )
+    except Exception as e:
+        logger.error(f"Error in share_command: {e}", exc_info=True)
 
 
 async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /about — информация о боте."""
-    about_text = (
-        "ℹ️ *О боте Wordle RU*\n\n"
-        f"*Версия:* {BOT_VERSION}\n"
-        "*Словарь:* ~1500 слов\n"
-        "*Платформа:* Telegram Mini Apps\n\n"
-        "*Особенности:*\n"
-        "• Бесконечный режим игры\n"
-        "• Автосохранение прогресса\n"
-        "• Адаптивный дизайн\n"
-        "• Работает на всех устройствах\n\n"
-        "_Создано с ❤️ для любителей слов_"
-    )
-    
-    await update.message.reply_text(
-        about_text,
-        reply_markup=get_play_keyboard(),
-        parse_mode='Markdown'
-    )
+    try:
+        if not update.message:
+            logger.warning("Received /about but update.message is None")
+            return
+        logger.info(f"Received /about from user {update.effective_user.id}")
+        about_text = (
+            "ℹ️ *О боте Wordle RU*\n\n"
+            f"*Версия:* {BOT_VERSION}\n"
+            "*Словарь:* ~1500 слов\n"
+            "*Платформа:* Telegram Mini Apps\n\n"
+            "*Особенности:*\n"
+            "• Бесконечный режим игры\n"
+            "• Автосохранение прогресса\n"
+            "• Адаптивный дизайн\n"
+            "• Работает на всех устройствах\n\n"
+            "_Создано с ❤️ для любителей слов_"
+        )
+        
+        await update.message.reply_text(
+            about_text,
+            reply_markup=get_play_keyboard(),
+            parse_mode='Markdown'
+        )
+    except Exception as e:
+        logger.error(f"Error in about_command: {e}", exc_info=True)
 
 
 async def handle_new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -293,56 +334,90 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 async def post_init(application: Application) -> None:
     """Инициализация бота после запуска."""
-    # Установка кнопки меню
-    await application.bot.set_chat_menu_button(
-        menu_button=MenuButtonWebApp(text="Wordlee!", web_app=WebAppInfo(url=WEBAPP_URL))
-    )
-    
-    # Установка команд бота
-    commands = [
-        ("start", "🎮 Главное меню"),
-        ("play", "🎯 Начать игру"),
-        ("help", "📖 Правила игры"),
-        ("stats", "📊 Моя статистика"),
-        ("share", "📤 Поделиться"),
-        ("about", "ℹ️ О боте"),
-    ]
-    await application.bot.set_my_commands(commands)
-    
-    logger.info("Bot initialized successfully")
+    try:
+        logger.info("Initializing bot...")
+        # Установка кнопки меню
+        await application.bot.set_chat_menu_button(
+            menu_button=MenuButtonWebApp(text="Wordlee!", web_app=WebAppInfo(url=WEBAPP_URL))
+        )
+        logger.info("Menu button set")
+        
+        # Установка команд бота
+        commands = [
+            ("start", "🎮 Главное меню"),
+            ("play", "🎯 Начать игру"),
+            ("help", "📖 Правила игры"),
+            ("stats", "📊 Моя статистика"),
+            ("share", "📤 Поделиться"),
+            ("about", "ℹ️ О боте"),
+        ]
+        await application.bot.set_my_commands(commands)
+        logger.info(f"Bot commands registered: {len(commands)} commands")
+        
+        # Проверка подключения
+        bot_info = await application.bot.get_me()
+        logger.info(f"Bot initialized successfully: @{bot_info.username} ({bot_info.first_name})")
+    except Exception as e:
+        logger.error(f"Error in post_init: {e}", exc_info=True)
+        raise
 
 
 def main() -> None:
     """Запуск бота."""
-    # Создание приложения
-    application = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
-    
-    # Команды
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("play", play_command))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("stats", stats_command))
-    application.add_handler(CommandHandler("share", share_command))
-    application.add_handler(CommandHandler("about", about_command))
-    
-    # Обработчик inline-кнопок
-    application.add_handler(CallbackQueryHandler(handle_callback))
-    
-    # Обработчик добавления бота в группу
-    application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, handle_new_chat_members))
-    
-    # Обработчик неизвестных команд (должен быть перед обработчиком текста)
-    application.add_handler(MessageHandler(filters.COMMAND, unknown_command))
-    
-    # Обработчик текстовых сообщений
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
-    
-    # Обработчик ошибок
-    application.add_error_handler(error_handler)
-    
-    # Запуск бота
-    logger.info("Starting Wordle RU bot...")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    try:
+        logger.info("=" * 50)
+        logger.info("Starting Wordle RU bot...")
+        logger.info(f"WEBAPP_URL: {WEBAPP_URL}")
+        logger.info(f"BOT_USERNAME: {BOT_USERNAME}")
+        logger.info("=" * 50)
+        
+        # Создание приложения
+        application = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
+        
+        # Команды (добавляем первыми, чтобы они обрабатывались в первую очередь)
+        logger.info("Registering command handlers...")
+        application.add_handler(CommandHandler("start", start))
+        application.add_handler(CommandHandler("play", play_command))
+        application.add_handler(CommandHandler("help", help_command))
+        application.add_handler(CommandHandler("stats", stats_command))
+        application.add_handler(CommandHandler("share", share_command))
+        application.add_handler(CommandHandler("about", about_command))
+        logger.info("Command handlers registered: 6 commands")
+        
+        # Обработчик inline-кнопок
+        application.add_handler(CallbackQueryHandler(handle_callback))
+        logger.info("Callback query handler registered")
+        
+        # Обработчик добавления бота в группу
+        application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, handle_new_chat_members))
+        logger.info("New chat members handler registered")
+        
+        # Обработчик текстовых сообщений
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
+        logger.info("Text message handler registered")
+        
+        # Обработчик неизвестных команд (последним, после всех CommandHandler)
+        application.add_handler(MessageHandler(filters.COMMAND, unknown_command))
+        logger.info("Unknown command handler registered")
+        
+        # Обработчик ошибок
+        application.add_error_handler(error_handler)
+        logger.info("Error handler registered")
+        
+        logger.info("All handlers registered successfully")
+        logger.info("Starting polling...")
+        logger.info("=" * 50)
+        
+        # Запуск бота
+        application.run_polling(
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True  # Игнорируем старые обновления при запуске
+        )
+    except KeyboardInterrupt:
+        logger.info("Bot stopped by user")
+    except Exception as e:
+        logger.error(f"Fatal error in main: {e}", exc_info=True)
+        raise
 
 
 if __name__ == '__main__':
