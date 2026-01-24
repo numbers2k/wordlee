@@ -75,7 +75,9 @@ python bot.py
 ### Telegram Bot
 1. [@BotFather](https://t.me/BotFather) → `/newbot`
 2. Bot Settings → Menu Button → указать URL приложения
-3. Запустить `bot.py` на сервере
+3. **Деплой бота на сервер** (см. `bot/DEPLOY.md`)
+   - GitHub Pages **НЕ** может запускать Python-скрипты
+   - Нужен сервер: Railway, Render, Fly.io или VPS
 
 ## Технологии
 
