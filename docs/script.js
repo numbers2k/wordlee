@@ -23,18 +23,106 @@ let gameState = {
 
 let tg = null;
 
+// Debug mode for testing
+const DEBUG_MODE = new URLSearchParams(window.location.search).get('debug') === 'true';
+
+function debugLog(...args) {
+    if (DEBUG_MODE) {
+        console.log('[Wordle Debug]', ...args);
+    }
+}
+
 function initTelegram() {
     try {
+        debugLog('Initializing Telegram Web App...');
+        
         if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
             tg = Telegram.WebApp;
+            debugLog('Telegram Web App available, version:', tg.version);
+            debugLog('Platform:', tg.platform);
+            
+            // Inform Telegram that app is ready
             tg.ready();
+            
+            // Expand to maximum height
             tg.expand();
+            debugLog('After expand - isExpanded:', tg.isExpanded);
+            
+            // Set colors
             if (tg.setHeaderColor) tg.setHeaderColor('#121213');
             if (tg.setBackgroundColor) tg.setBackgroundColor('#121213');
+            
+            // Request fullscreen mode (Bot API 8.0+)
+            if (tg.isVersionAtLeast && tg.isVersionAtLeast('8.0')) {
+                debugLog('API 8.0+ detected, requesting fullscreen...');
+                if (tg.requestFullscreen) {
+                    tg.requestFullscreen();
+                    debugLog('Fullscreen requested');
+                }
+            }
+            
+            // Apply safe area insets
+            updateSafeAreas();
+            
+            // Track safe area changes
+            if (tg.onEvent) {
+                tg.onEvent('safeAreaChanged', updateSafeAreas);
+                tg.onEvent('contentSafeAreaChanged', updateSafeAreas);
+                tg.onEvent('viewportChanged', updateSafeAreas);
+                tg.onEvent('fullscreenChanged', () => {
+                    debugLog('Fullscreen changed:', tg.isFullscreen);
+                    updateSafeAreas();
+                });
+            }
+        } else {
+            debugLog('Telegram Web App not available');
         }
         document.body.classList.add('dark-theme');
     } catch (e) {
         console.error('Telegram init error:', e);
+        debugLog('Init error:', e.stack);
+    }
+}
+
+function updateSafeAreas() {
+    if (!tg) return;
+    
+    debugLog('Updating safe areas...');
+    
+    // Use contentSafeAreaInset to avoid overlapping with Telegram UI
+    if (tg.contentSafeAreaInset) {
+        const top = tg.contentSafeAreaInset.top || 0;
+        const bottom = tg.contentSafeAreaInset.bottom || 0;
+        const left = tg.contentSafeAreaInset.left || 0;
+        const right = tg.contentSafeAreaInset.right || 0;
+        
+        document.documentElement.style.setProperty('--tg-safe-top', `${top}px`);
+        document.documentElement.style.setProperty('--tg-safe-bottom', `${bottom}px`);
+        document.documentElement.style.setProperty('--tg-safe-left', `${left}px`);
+        document.documentElement.style.setProperty('--tg-safe-right', `${right}px`);
+        
+        debugLog('Content safe area insets:', { top, bottom, left, right });
+    }
+    
+    // Also account for device system safe areas
+    if (tg.safeAreaInset) {
+        const deviceTop = tg.safeAreaInset.top || 0;
+        const deviceBottom = tg.safeAreaInset.bottom || 0;
+        const deviceLeft = tg.safeAreaInset.left || 0;
+        const deviceRight = tg.safeAreaInset.right || 0;
+        
+        document.documentElement.style.setProperty('--device-safe-top', `${deviceTop}px`);
+        document.documentElement.style.setProperty('--device-safe-bottom', `${deviceBottom}px`);
+        document.documentElement.style.setProperty('--device-safe-left', `${deviceLeft}px`);
+        document.documentElement.style.setProperty('--device-safe-right', `${deviceRight}px`);
+        
+        debugLog('Device safe area insets:', { deviceTop, deviceBottom, deviceLeft, deviceRight });
+    }
+    
+    // Log viewport info
+    if (tg.viewportHeight) {
+        debugLog('Viewport height:', tg.viewportHeight);
+        debugLog('Viewport stable height:', tg.viewportStableHeight);
     }
 }
 
@@ -126,6 +214,9 @@ function addLetter(letter) {
         tile.classList.add('filled');
     }
     gameState.currentTile++;
+    
+    // Autosave after each change
+    saveGameState();
 }
 
 function removeLetter() {
@@ -140,6 +231,9 @@ function removeLetter() {
         tile.textContent = '';
         tile.classList.remove('filled');
     }
+    
+    // Autosave after each change
+    saveGameState();
 }
 
 function submitWord() {
@@ -172,9 +266,12 @@ function submitWord() {
             setTimeout(showStatsModal, 1500);
         } else if (gameState.currentRow >= MAX_ATTEMPTS - 1) {
             gameState.gameOver = true;
-            showToast(gameState.targetWord, 5000);
+            
+            // Show the correct word more prominently
+            showLossMessage(gameState.targetWord);
+            
             updateStats(false);
-            setTimeout(showStatsModal, 2000);
+            setTimeout(showStatsModal, 2500);
         } else {
             gameState.currentRow++;
             gameState.currentTile = 0;
@@ -243,6 +340,36 @@ function celebrateWin() {
     row.querySelectorAll('.tile').forEach((tile, i) => {
         setTimeout(() => tile.classList.add('win'), i * 100);
     });
+}
+
+// Show loss message with the correct word
+function showLossMessage(word) {
+    // Show toast with the correct word
+    showToast(`Правильное слово: ${word.toUpperCase()}`, 4000, 'error');
+    
+    // Add message to stats modal
+    const statsModal = document.getElementById('statsModal');
+    if (statsModal) {
+        // Add the correct answer display element if it doesn't exist
+        let answerDisplay = statsModal.querySelector('.correct-answer-display');
+        if (!answerDisplay) {
+            answerDisplay = document.createElement('div');
+            answerDisplay.className = 'correct-answer-display';
+            
+            const modalBody = statsModal.querySelector('.modal-body');
+            if (modalBody) {
+                // Insert at the beginning of modal body
+                modalBody.insertBefore(answerDisplay, modalBody.firstChild);
+            }
+        }
+        
+        answerDisplay.innerHTML = `
+            <div class="loss-message">
+                <p class="loss-text">Правильное слово:</p>
+                <p class="loss-word">${word.toUpperCase()}</p>
+            </div>
+        `;
+    }
 }
 
 function updateKeyboard(letter, status) {
@@ -330,26 +457,79 @@ function getStorageKey() {
 function saveGameState() {
     const key = getStorageKey();
     if (!key) return;
+    
     try {
-        localStorage.setItem(key, JSON.stringify({
+        const state = {
             board: gameState.board,
             currentRow: gameState.currentRow,
             currentTile: gameState.currentTile,
             gameOver: gameState.gameOver,
             won: gameState.won,
             evaluations: gameState.evaluations,
-            mode: gameState.mode
-        }));
-    } catch {}
+            mode: gameState.mode,
+            targetWord: gameState.targetWord, // Save target word for restoration
+            gameNumber: gameState.gameNumber,
+            timestamp: Date.now() // Add timestamp for sync
+        };
+        
+        localStorage.setItem(key, JSON.stringify(state));
+        debugLog('Game state saved to localStorage');
+        
+        // Also save to Telegram Cloud Storage if available
+        if (tg && tg.CloudStorage) {
+            tg.CloudStorage.setItem(key, JSON.stringify(state), (error) => {
+                if (error) {
+                    debugLog('Cloud storage save failed:', error);
+                } else {
+                    debugLog('Game state saved to Cloud Storage');
+                }
+            });
+        }
+    } catch (e) {
+        console.error('Save failed:', e);
+    }
 }
 
 function loadGameState() {
     const key = getStorageKey();
     if (!key) return null;
+    
     try {
         const saved = localStorage.getItem(key);
-        return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
+        const localState = saved ? JSON.parse(saved) : null;
+        debugLog('Loaded from localStorage:', localState ? 'found' : 'not found');
+        return localState;
+    } catch (e) {
+        console.error('Load failed:', e);
+        return null;
+    }
+}
+
+// Setup autosave event listeners
+function setupAutosave() {
+    // Save when page is about to unload
+    window.addEventListener('beforeunload', () => {
+        saveGameState();
+        debugLog('Saved on beforeunload');
+    });
+    
+    // Save when tab becomes hidden (user switches apps)
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            saveGameState();
+            debugLog('Saved on visibility change (hidden)');
+        }
+    });
+    
+    // Save when Telegram viewport changes (minimizing app)
+    if (tg && tg.onEvent) {
+        tg.onEvent('viewportChanged', () => {
+            if (!tg.isExpanded) {
+                saveGameState();
+                debugLog('Saved on viewport change (collapsed)');
+            }
+        });
+    }
 }
 
 function validateAndFixState(state) {
@@ -416,6 +596,12 @@ function startNewGame() {
     createBoard();
     resetKeyboard();
     hideStatsModal();
+    
+    // Clear any previous loss message
+    const answerDisplay = document.querySelector('.correct-answer-display');
+    if (answerDisplay) {
+        answerDisplay.remove();
+    }
 }
 
 function startDailyGame() {
@@ -433,8 +619,21 @@ function startDailyGame() {
     createBoard();
     resetKeyboard();
     
+    // Clear any previous loss message
+    const answerDisplay = document.querySelector('.correct-answer-display');
+    if (answerDisplay) {
+        answerDisplay.remove();
+    }
+    
     const saved = loadGameState();
-    if (saved) restoreGameState(saved);
+    if (saved) {
+        // Restore target word from saved state (important for consistency)
+        if (saved.targetWord) {
+            gameState.targetWord = saved.targetWord;
+        }
+        restoreGameState(saved);
+        debugLog('Restored game state, targetWord:', gameState.targetWord);
+    }
 }
 
 function showHelpModal() {
@@ -513,6 +712,7 @@ function handleModalClick(e) {
 function init() {
     initTelegram();
     startDailyGame();
+    setupAutosave();
     
     document.getElementById('keyboard')?.addEventListener('click', handleKeyClick);
     document.addEventListener('keydown', handleKeyDown);
@@ -534,6 +734,8 @@ function init() {
     if (new URLSearchParams(window.location.search).get('view') === 'stats') {
         showStatsModal();
     }
+    
+    debugLog('Game initialized');
 }
 
 if (document.readyState === 'loading') {

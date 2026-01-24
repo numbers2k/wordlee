@@ -12,15 +12,38 @@
     --key-text: #ffffff;
     --header-height: 44px;
     --toolbar-height: 44px;
-    --tile-size: min(62px, calc((100vw - 50px) / 5));
-    --tile-gap: 5px;
-    --tile-font-size: 2rem;
-    --key-height: 58px;
+    --keyboard-height: 180px;
+    --tile-size: min(58px, calc((100vw - 60px) / 5));
+    --tile-gap: 4px;
+    --tile-font-size: 1.9rem;
+    --key-height: 54px;
     --flip-duration: 0.5s;
+    
+    /* Telegram safe area insets (set by JS) */
+    --tg-safe-top: 0px;
+    --tg-safe-bottom: 0px;
+    --tg-safe-left: 0px;
+    --tg-safe-right: 0px;
+    
+    /* Device safe area insets (set by JS) */
+    --device-safe-top: 0px;
+    --device-safe-bottom: 0px;
+    --device-safe-left: 0px;
+    --device-safe-right: 0px;
+    
+    /* Combined safe areas - use max of all sources */
+    --safe-area-top: max(var(--tg-safe-top), var(--device-safe-top), env(safe-area-inset-top, 0px));
+    --safe-area-bottom: max(var(--tg-safe-bottom), var(--device-safe-bottom), env(safe-area-inset-bottom, 0px));
+    --safe-area-left: max(var(--tg-safe-left), var(--device-safe-left), env(safe-area-inset-left, 0px));
+    --safe-area-right: max(var(--tg-safe-right), var(--device-safe-right), env(safe-area-inset-right, 0px));
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { height: 100%; overflow: hidden; }
+html, body { 
+    height: 100%; 
+    height: 100dvh; /* Dynamic viewport height for mobile */
+    overflow: hidden; 
+}
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -35,8 +58,12 @@ body {
     display: flex;
     flex-direction: column;
     height: 100%;
+    height: 100dvh;
     max-width: 500px;
     margin: 0 auto;
+    padding-top: var(--safe-area-top);
+    padding-left: var(--safe-area-left);
+    padding-right: var(--safe-area-right);
 }
 
 /* Header - название бота */
@@ -44,8 +71,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    height: var(--header-height);
-    padding: 0 16px;
+    min-height: var(--header-height);
+    padding: 8px 16px;
     border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
 }
@@ -85,15 +112,19 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 10px;
-    overflow: hidden;
+    padding: 8px 12px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0; /* Important for proper flex-shrink */
 }
 
 .board {
     display: grid;
     grid-template-rows: repeat(6, 1fr);
     gap: var(--tile-gap);
-    padding: 10px;
+    padding: 4px;
+    width: 100%;
+    max-width: 330px;
 }
 
 .row {
@@ -125,39 +156,72 @@ body {
 
 /* Keyboard */
 .keyboard {
-    padding: 8px;
-    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    padding: 4px 2px;
+    padding-bottom: max(6px, var(--safe-area-bottom));
     flex-shrink: 0;
+    background: var(--bg-primary);
 }
 
 .keyboard-row {
     display: flex;
     justify-content: center;
-    gap: 6px;
-    margin-bottom: 8px;
+    align-items: stretch;
+    gap: 4px;
+    margin-bottom: 6px;
+    width: 100%;
+    padding: 0 2px;
 }
 .keyboard-row:last-child { margin-bottom: 0; }
 
+/* Offset for second row (like iOS keyboard) */
+.keyboard-row-offset {
+    padding: 0 6px;
+}
+
+.spacer-half {
+    flex: 0.5;
+    min-width: 0;
+}
+
+/* Base key styles */
 .key {
-    min-width: 28px;
+    flex: 1;
+    min-width: 0;
+    max-width: 36px;
     height: var(--key-height);
-    padding: 0 8px;
+    padding: 0;
     background-color: var(--key-bg);
     color: var(--key-text);
     border: none;
-    border-radius: 4px;
-    font-size: 1rem;
-    font-weight: 600;
+    border-radius: 5px;
+    font-size: 17px;
+    font-weight: 500;
     text-transform: uppercase;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex: 1;
-    max-width: 43px;
+    transition: background-color 0.1s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
 }
-.key:active { transform: scale(0.95); }
-.key-wide { min-width: 55px; max-width: 70px; flex: 1.5; font-size: 0.75rem; font-weight: 700; }
+
+/* Active state */
+.key:active { 
+    opacity: 0.7;
+    transform: scale(0.97); 
+}
+
+/* Action keys (Enter, Backspace) */
+.key-action {
+    flex: 1.5;
+    max-width: 58px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* Letter states */
 .key.correct { background-color: var(--color-correct); color: white; }
 .key.present { background-color: var(--color-present); color: white; }
 .key.absent { background-color: var(--color-absent); color: white; }
@@ -315,11 +379,207 @@ body {
     pointer-events: auto;
 }
 .toast.success { background-color: var(--color-correct); color: white; }
-.toast.error { background-color: #ff4444; color: white; }
+.toast.error { 
+    background-color: #ff4444; 
+    color: white; 
+    font-size: 1rem;
+    padding: 14px 22px;
+    box-shadow: 0 4px 12px rgba(255, 68, 68, 0.4);
+}
 .toast.hide { animation: fadeOut 0.3s ease forwards; }
 
-@media (max-height: 600px) {
-    :root { --tile-size: min(50px, calc((100vw - 50px) / 5)); --tile-font-size: 1.5rem; --key-height: 48px; }
+/* Loss message - correct answer display */
+.correct-answer-display {
+    margin: 16px 0 20px 0;
+    padding: 16px;
+    background: rgba(255, 68, 68, 0.1);
+    border: 2px solid #ff4444;
+    border-radius: 8px;
+    text-align: center;
 }
 
-@media (min-width: 500px) { :root { --tile-size: 62px; } }
+.loss-message {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.loss-text {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.loss-word {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #ff4444;
+    letter-spacing: 4px;
+    margin: 0;
+    text-transform: uppercase;
+}
+
+/* Responsive adjustments for different screen heights */
+@media (max-height: 700px) {
+    :root {
+        --tile-size: min(52px, calc((100vw - 60px) / 5));
+        --tile-gap: 3px;
+        --key-height: 50px;
+        --keyboard-height: 170px;
+    }
+    
+    .header {
+        min-height: 36px;
+        padding: 6px 16px;
+    }
+    
+    .toolbar {
+        padding: 4px 16px;
+    }
+}
+
+@media (max-height: 650px) {
+    :root {
+        --tile-size: min(46px, calc((100vw - 60px) / 5));
+        --tile-gap: 3px;
+        --key-height: 46px;
+        --keyboard-height: 155px;
+        --tile-font-size: 1.6rem;
+    }
+    
+    .header {
+        min-height: 32px;
+        padding: 4px 16px;
+    }
+    
+    .toolbar {
+        padding: 2px 16px;
+    }
+    
+    .key {
+        font-size: 15px;
+    }
+    
+    .key-action {
+        font-size: 12px;
+    }
+}
+
+@media (max-height: 600px) {
+    :root {
+        --tile-size: min(42px, calc((100vw - 50px) / 5));
+        --tile-font-size: 1.4rem;
+        --key-height: 42px;
+    }
+}
+
+/* Responsive adjustments for different screen widths */
+@media (max-width: 390px) {
+    .key {
+        max-width: 32px;
+        height: 48px;
+        font-size: 15px;
+    }
+    
+    .key-action {
+        max-width: 52px;
+        font-size: 12px;
+    }
+    
+    .keyboard-row {
+        gap: 3px;
+        margin-bottom: 5px;
+    }
+}
+
+@media (max-width: 360px) {
+    .key {
+        max-width: 28px;
+        height: 44px;
+        font-size: 14px;
+    }
+    
+    .key-action {
+        max-width: 46px;
+        font-size: 11px;
+    }
+    
+    .keyboard-row {
+        gap: 2px;
+        margin-bottom: 4px;
+    }
+}
+
+/* iPhone SE (375px) */
+@media (max-width: 375px) and (max-height: 667px) {
+    :root {
+        --tile-size: 48px;
+        --tile-font-size: 1.5rem;
+        --key-height: 44px;
+    }
+}
+
+/* iPhone 12/13/14 (390px) */
+@media (min-width: 376px) and (max-width: 393px) {
+    :root {
+        --tile-size: 54px;
+        --tile-font-size: 1.75rem;
+        --key-height: 50px;
+    }
+    
+    .key {
+        max-width: 34px;
+    }
+    
+    .key-action {
+        max-width: 56px;
+    }
+}
+
+/* iPhone 14 Pro / 15 Pro (393px) */
+@media (min-width: 393px) and (max-width: 430px) {
+    :root {
+        --tile-size: 56px;
+        --tile-font-size: 1.8rem;
+        --key-height: 52px;
+    }
+    
+    .key {
+        max-width: 36px;
+    }
+    
+    .key-action {
+        max-width: 60px;
+    }
+}
+
+/* iPhone 14 Pro Max / 15 Pro Max (430px) */
+@media (min-width: 430px) {
+    :root {
+        --tile-size: 60px;
+        --tile-font-size: 1.9rem;
+        --key-height: 56px;
+    }
+    
+    .key {
+        max-width: 40px;
+    }
+    
+    .key-action {
+        max-width: 66px;
+    }
+}
+
+@media (min-width: 500px) {
+    :root {
+        --tile-size: 62px;
+    }
+    
+    .key {
+        max-width: 43px;
+    }
+    
+    .key-action {
+        max-width: 70px;
+    }
+}

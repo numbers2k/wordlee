@@ -37,6 +37,7 @@
         </main>
 
         <div class="keyboard" id="keyboard">
+            <!-- First row: 12 keys -->
             <div class="keyboard-row">
                 <button class="key" data-key="й">й</button>
                 <button class="key" data-key="ц">ц</button>
@@ -51,7 +52,9 @@
                 <button class="key" data-key="х">х</button>
                 <button class="key" data-key="ъ">ъ</button>
             </div>
-            <div class="keyboard-row">
+            <!-- Second row: 11 keys with offset (like iOS keyboard) -->
+            <div class="keyboard-row keyboard-row-offset">
+                <div class="spacer-half"></div>
                 <button class="key" data-key="ф">ф</button>
                 <button class="key" data-key="ы">ы</button>
                 <button class="key" data-key="в">в</button>
@@ -63,9 +66,13 @@
                 <button class="key" data-key="д">д</button>
                 <button class="key" data-key="ж">ж</button>
                 <button class="key" data-key="э">э</button>
+                <div class="spacer-half"></div>
             </div>
+            <!-- Third row: Enter + 9 keys + Backspace -->
             <div class="keyboard-row">
-                <button class="key key-wide" data-key="Enter">ОК</button>
+                <button class="key key-action" data-key="Enter">
+                    <span>OK</span>
+                </button>
                 <button class="key" data-key="я">я</button>
                 <button class="key" data-key="ч">ч</button>
                 <button class="key" data-key="с">с</button>
@@ -75,8 +82,8 @@
                 <button class="key" data-key="ь">ь</button>
                 <button class="key" data-key="б">б</button>
                 <button class="key" data-key="ю">ю</button>
-                <button class="key key-wide" data-key="Backspace">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <button class="key key-action" data-key="Backspace">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/>
                         <line x1="18" y1="9" x2="12" y2="15"/>
                         <line x1="12" y1="9" x2="18" y2="15"/>
