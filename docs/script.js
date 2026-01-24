@@ -542,8 +542,9 @@ function displayStats() {
 function getStorageKey() {
     if (gameState.mode === GAME_MODE.DAILY) {
         const date = new Date().toISOString().split('T')[0];
-        const key = `wordle_game_${date}`;
-        return key;
+        return `wordle_daily_${date}`;
+    } else if (gameState.mode === GAME_MODE.ENDLESS) {
+        return 'wordle_endless_current';
     }
     return null;
 }
@@ -774,7 +775,63 @@ function restoreGameState(state) {
     debugLog('Game state restored successfully');
 }
 
+function loadEndlessGame() {
+    try {
+        const saved = localStorage.getItem('wordle_endless_current');
+        if (saved) {
+            const state = JSON.parse(saved);
+            debugLog('Loaded endless game:', {
+                gameOver: state.gameOver,
+                currentRow: state.currentRow,
+                hasBoard: !!state.board
+            });
+            return state;
+        }
+    } catch (e) {
+        debugLog('Error loading endless game:', e);
+    }
+    return null;
+}
+
+function restoreEndlessGame(saved) {
+    debugLog('=== RESTORE ENDLESS GAME ===');
+    
+    gameState = {
+        targetWord: saved.targetWord || getRandomWord(),
+        currentRow: 0,
+        currentTile: 0,
+        board: [],
+        gameOver: false,
+        won: false,
+        evaluations: [],
+        mode: GAME_MODE.ENDLESS,
+        gameNumber: saved.gameNumber || Math.floor(Math.random() * 100000)
+    };
+    
+    createBoard();
+    resetKeyboard();
+    
+    // Clear any previous loss message
+    const answerDisplay = document.querySelector('.correct-answer-display');
+    if (answerDisplay) {
+        answerDisplay.remove();
+    }
+    
+    restoreGameState(saved);
+    debugLog('Endless game restored, currentRow:', gameState.currentRow);
+}
+
 function startNewGame() {
+    debugLog('=== START NEW ENDLESS GAME ===');
+    
+    // Clear previous endless game save
+    try {
+        localStorage.removeItem('wordle_endless_current');
+        debugLog('Cleared previous endless game save');
+    } catch (e) {
+        debugLog('Error clearing endless save:', e);
+    }
+    
     gameState = {
         targetWord: getRandomWord(),
         currentRow: 0,
@@ -786,6 +843,9 @@ function startNewGame() {
         mode: GAME_MODE.ENDLESS,
         gameNumber: Math.floor(Math.random() * 100000)
     };
+    
+    debugLog('New endless game targetWord:', gameState.targetWord);
+    
     createBoard();
     resetKeyboard();
     hideStatsModal();
@@ -795,6 +855,9 @@ function startNewGame() {
     if (answerDisplay) {
         answerDisplay.remove();
     }
+    
+    // Save initial state
+    saveGameState();
 }
 
 function startDailyGame() {
@@ -934,7 +997,17 @@ function init() {
     debugLog('=== INIT STARTED ===');
     
     initTelegram();
-    startDailyGame();
+    
+    // Check if there's an in-progress endless game to restore
+    const endlessSave = loadEndlessGame();
+    if (endlessSave && !endlessSave.gameOver) {
+        debugLog('Found in-progress endless game, restoring...');
+        restoreEndlessGame(endlessSave);
+    } else {
+        debugLog('No in-progress endless game, starting daily...');
+        startDailyGame();
+    }
+    
     setupAutosave();
     
     document.getElementById('keyboard')?.addEventListener('click', handleKeyClick);
