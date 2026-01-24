@@ -26,9 +26,101 @@ let tg = null;
 // Debug mode for testing
 const DEBUG_MODE = new URLSearchParams(window.location.search).get('debug') === 'true';
 
+// Visual debug panel for mobile testing
+let debugPanel = null;
+
 function debugLog(...args) {
     if (DEBUG_MODE) {
         console.log('[Wordle Debug]', ...args);
+        
+        // Also show on visual debug panel
+        if (debugPanel) {
+            const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+            const line = document.createElement('div');
+            line.textContent = `${new Date().toLocaleTimeString()}: ${msg}`;
+            line.style.borderBottom = '1px solid #333';
+            line.style.padding = '2px 0';
+            debugPanel.insertBefore(line, debugPanel.firstChild);
+            
+            // Keep only last 20 messages
+            while (debugPanel.children.length > 20) {
+                debugPanel.removeChild(debugPanel.lastChild);
+            }
+        }
+    }
+}
+
+function createDebugPanel() {
+    if (!DEBUG_MODE) return;
+    
+    debugPanel = document.createElement('div');
+    debugPanel.id = 'debugPanel';
+    debugPanel.style.cssText = `
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        max-height: 150px;
+        overflow-y: auto;
+        background: rgba(0,0,0,0.9);
+        color: #0f0;
+        font-size: 10px;
+        font-family: monospace;
+        padding: 5px;
+        z-index: 9999;
+        border-top: 2px solid #0f0;
+    `;
+    document.body.appendChild(debugPanel);
+    
+    // Add storage test button
+    const testBtn = document.createElement('button');
+    testBtn.textContent = 'Test Storage';
+    testBtn.style.cssText = 'margin: 5px; padding: 5px; font-size: 12px;';
+    testBtn.onclick = testLocalStorage;
+    debugPanel.appendChild(testBtn);
+    
+    // Add clear button
+    const clearBtn = document.createElement('button');
+    clearBtn.textContent = 'Clear Storage';
+    clearBtn.style.cssText = 'margin: 5px; padding: 5px; font-size: 12px;';
+    clearBtn.onclick = () => {
+        localStorage.clear();
+        debugLog('localStorage cleared!');
+    };
+    debugPanel.appendChild(clearBtn);
+    
+    // Show all localStorage keys
+    const showKeysBtn = document.createElement('button');
+    showKeysBtn.textContent = 'Show Keys';
+    showKeysBtn.style.cssText = 'margin: 5px; padding: 5px; font-size: 12px;';
+    showKeysBtn.onclick = () => {
+        const keys = Object.keys(localStorage);
+        debugLog('localStorage keys:', keys);
+        keys.forEach(k => {
+            const val = localStorage.getItem(k);
+            debugLog(`  ${k}: ${val ? val.substring(0, 100) : 'null'}...`);
+        });
+    };
+    debugPanel.appendChild(showKeysBtn);
+}
+
+function testLocalStorage() {
+    const testKey = 'wordle_test_' + Date.now();
+    const testValue = { test: true, time: Date.now() };
+    
+    try {
+        localStorage.setItem(testKey, JSON.stringify(testValue));
+        const retrieved = localStorage.getItem(testKey);
+        const parsed = JSON.parse(retrieved);
+        localStorage.removeItem(testKey);
+        
+        if (parsed.test === true) {
+            debugLog('localStorage TEST PASSED');
+        } else {
+            debugLog('localStorage TEST FAILED - data mismatch');
+        }
+    } catch (e) {
+        debugLog('localStorage TEST FAILED:', e.message);
     }
 }
 
@@ -449,9 +541,32 @@ function displayStats() {
 
 function getStorageKey() {
     if (gameState.mode === GAME_MODE.DAILY) {
-        return `wordle_game_${new Date().toISOString().split('T')[0]}`;
+        const date = new Date().toISOString().split('T')[0];
+        const key = `wordle_game_${date}`;
+        return key;
     }
     return null;
+}
+
+function showStorageInfo() {
+    const key = getStorageKey();
+    debugLog('Current storage key:', key);
+    
+    if (key) {
+        const data = localStorage.getItem(key);
+        if (data) {
+            try {
+                const parsed = JSON.parse(data);
+                debugLog('Stored data timestamp:', new Date(parsed.timestamp).toLocaleString());
+                debugLog('Stored currentRow:', parsed.currentRow);
+                debugLog('Stored board[0]:', parsed.board ? parsed.board[0] : 'no board');
+            } catch (e) {
+                debugLog('Error parsing stored data:', e.message);
+            }
+        } else {
+            debugLog('No data found for key:', key);
+        }
+    }
 }
 
 function saveGameState() {
@@ -683,7 +798,8 @@ function startNewGame() {
 }
 
 function startDailyGame() {
-    debugLog('Starting daily game...');
+    debugLog('=== START DAILY GAME ===');
+    showStorageInfo();
     
     const dailyWord = getDailyWord();
     const gameNum = getGameNumber();
@@ -715,7 +831,11 @@ function startDailyGame() {
     const saved = loadGameState();
     
     if (saved && saved.board && saved.board.length > 0) {
-        debugLog('Found saved state, attempting restore...');
+        debugLog('Found saved state!');
+        debugLog('Saved timestamp:', saved.timestamp ? new Date(saved.timestamp).toLocaleString() : 'none');
+        debugLog('Saved currentRow:', saved.currentRow, 'currentTile:', saved.currentTile);
+        debugLog('Saved board[0]:', JSON.stringify(saved.board[0]));
+        debugLog('Saved board[1]:', JSON.stringify(saved.board[1]));
         
         // Restore target word from saved state (important for consistency)
         if (saved.targetWord) {
@@ -725,11 +845,14 @@ function startDailyGame() {
         
         restoreGameState(saved);
         
-        debugLog('Game restored - currentRow:', gameState.currentRow, 
+        debugLog('AFTER RESTORE - currentRow:', gameState.currentRow, 
                  'currentTile:', gameState.currentTile,
                  'gameOver:', gameState.gameOver);
+        debugLog('AFTER RESTORE - board[0]:', JSON.stringify(gameState.board[0]));
     } else {
-        debugLog('No valid saved state, starting fresh game');
+        debugLog('No valid saved state found');
+        debugLog('saved object:', saved ? 'exists' : 'null');
+        debugLog('saved.board:', saved?.board ? 'exists, length=' + saved.board.length : 'missing');
     }
 }
 
@@ -807,6 +930,9 @@ function handleModalClick(e) {
 }
 
 function init() {
+    createDebugPanel();
+    debugLog('=== INIT STARTED ===');
+    
     initTelegram();
     startDailyGame();
     setupAutosave();
