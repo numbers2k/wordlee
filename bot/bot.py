@@ -23,10 +23,14 @@ load_dotenv()
 
 # Logging configuration
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    level=logging.INFO,
+    datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger(__name__)
+
+# Отключаем избыточные логи от httpx
+logging.getLogger('httpx').setLevel(logging.WARNING)
 
 # Bot configuration
 BOT_TOKEN = os.environ['BOT_TOKEN']
@@ -103,7 +107,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         
         user = update.effective_user
         chat_type = update.effective_chat.type
-        logger.info(f"Received /start from user {user.id} ({user.username}) in {chat_type}")
+        username = user.username or 'без username'
+        logger.info(f"👤 USER ACTION: /start | User: {user.id} (@{username}) | Name: {user.first_name} | Chat: {chat_type}")
         
         # Разное приветствие для личных чатов и групп
         if chat_type == ChatType.PRIVATE:
@@ -130,7 +135,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             reply_markup=get_main_keyboard(),
             parse_mode='Markdown'
         )
-        logger.info(f"Successfully sent /start response to user {user.id}")
+        logger.info(f"✅ RESPONSE SENT: /start to user {user.id}")
     except Exception as e:
         logger.error(f"Error in start handler: {e}", exc_info=True)
         if update.message:
@@ -143,7 +148,9 @@ async def play_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         if not update.message:
             logger.warning("Received /play but update.message is None")
             return
-        logger.info(f"Received /play from user {update.effective_user.id}")
+        user = update.effective_user
+        username = user.username or 'без username'
+        logger.info(f"🎮 USER ACTION: /play | User: {user.id} (@{username}) | Name: {user.first_name}")
         await update.message.reply_text(
             "🎯 Нажми кнопку, чтобы начать игру!",
             reply_markup=get_play_keyboard()
@@ -158,7 +165,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         if not update.message:
             logger.warning("Received /help but update.message is None")
             return
-        logger.info(f"Received /help from user {update.effective_user.id}")
+        user = update.effective_user
+        username = user.username or 'без username'
+        logger.info(f"📖 USER ACTION: /help | User: {user.id} (@{username}) | Name: {user.first_name}")
         help_text = (
             "📖 *Как играть в Wordlee*\n\n"
             "*Цель:* угадать слово из 5 букв за 6 попыток.\n\n"
@@ -188,7 +197,9 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         if not update.message:
             logger.warning("Received /stats but update.message is None")
             return
-        logger.info(f"Received /stats from user {update.effective_user.id}")
+        user = update.effective_user
+        username = user.username or 'без username'
+        logger.info(f"📊 USER ACTION: /stats | User: {user.id} (@{username}) | Name: {user.first_name}")
         
         await update.message.reply_text(
             "📊 *Твоя статистика*\n\n"
@@ -212,7 +223,9 @@ async def share_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         if not update.message:
             logger.warning("Received /share but update.message is None")
             return
-        logger.info(f"Received /share from user {update.effective_user.id}")
+        user = update.effective_user
+        username = user.username or 'без username'
+        logger.info(f"📤 USER ACTION: /share | User: {user.id} (@{username}) | Name: {user.first_name}")
         # Используем код-форматирование вместо Markdown для username, чтобы избежать курсива
         share_text = (
             "🎮 *Wordlee*\n\n"
@@ -235,7 +248,9 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         if not update.message:
             logger.warning("Received /about but update.message is None")
             return
-        logger.info(f"Received /about from user {update.effective_user.id}")
+        user = update.effective_user
+        username = user.username or 'без username'
+        logger.info(f"ℹ️ USER ACTION: /about | User: {user.id} (@{username}) | Name: {user.first_name}")
         about_text = (
             "ℹ️ *О боте Wordlee*\n\n"
             f"*Версия:* {BOT_VERSION}\n"
@@ -277,7 +292,7 @@ async def handle_new_chat_members(update: Update, context: ContextTypes.DEFAULT_
                     reply_markup=get_play_keyboard(),
                     parse_mode='Markdown'
                 )
-                logger.info(f"Bot added to group: {update.effective_chat.title} ({update.effective_chat.id})")
+                logger.info(f"👥 BOT ADDED TO GROUP: {update.effective_chat.title} (ID: {update.effective_chat.id})")
                 break
     except Exception as e:
         logger.error(f"Error in handle_new_chat_members: {e}", exc_info=True)
@@ -319,6 +334,10 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     try:
         query = update.callback_query
         await query.answer()
+        
+        user = update.effective_user
+        username = user.username or 'без username'
+        logger.info(f"🔘 BUTTON CLICK: {query.data} | User: {user.id} (@{username}) | Name: {user.first_name}")
         
         if query.data == "main_menu":
             user = update.effective_user
