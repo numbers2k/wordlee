@@ -227,94 +227,108 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 async def handle_new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик добавления бота в группу."""
-    for member in update.message.new_chat_members:
-        if member.id == context.bot.id:
-            welcome_text = (
-                "👋 Привет! Спасибо, что добавили меня!\n\n"
-                "🎮 *Wordle RU* — угадай слово из 5 букв за 6 попыток.\n\n"
-                "*Команды:*\n"
-                "/play — начать игру\n"
-                "/help — правила\n"
-                "/stats — статистика\n\n"
-                "Нажмите кнопку ниже, чтобы начать играть!"
-            )
-            
-            await update.message.reply_text(
-                welcome_text,
-                reply_markup=get_play_keyboard(),
-                parse_mode='Markdown'
-            )
-            logger.info(f"Bot added to group: {update.effective_chat.title} ({update.effective_chat.id})")
-            break
+    try:
+        for member in update.message.new_chat_members:
+            if member.id == context.bot.id:
+                welcome_text = (
+                    "👋 Привет! Спасибо, что добавили меня!\n\n"
+                    "🎮 *Wordle RU* — угадай слово из 5 букв за 6 попыток.\n\n"
+                    "*Команды:*\n"
+                    "/play — начать игру\n"
+                    "/help — правила\n"
+                    "/stats — статистика\n\n"
+                    "Нажмите кнопку ниже, чтобы начать играть!"
+                )
+                
+                await update.message.reply_text(
+                    welcome_text,
+                    reply_markup=get_play_keyboard(),
+                    parse_mode='Markdown'
+                )
+                logger.info(f"Bot added to group: {update.effective_chat.title} ({update.effective_chat.id})")
+                break
+    except Exception as e:
+        logger.error(f"Error in handle_new_chat_members: {e}", exc_info=True)
 
 
 async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик текстовых сообщений в личных чатах."""
-    # Только для личных чатов
-    if update.effective_chat.type != ChatType.PRIVATE:
-        return
-    
-    text = update.message.text.lower().strip()
-    
-    # Проверяем на ключевые слова
-    if any(word in text for word in ['играть', 'игра', 'play', 'старт', 'начать']):
-        await play_command(update, context)
-    elif any(word in text for word in ['помощь', 'правила', 'help', 'как']):
-        await help_command(update, context)
-    elif any(word in text for word in ['стат', 'счёт', 'результат', 'stats']):
-        await stats_command(update, context)
-    else:
-        # Стандартный ответ
+    try:
+        if update.effective_chat.type != ChatType.PRIVATE:
+            return
+        
+        if not update.message or not update.message.text:
+            return
+        
+        text = update.message.text.lower().strip()
+        
+        if any(word in text for word in ['играть', 'игра', 'play', 'старт', 'начать']):
+            await play_command(update, context)
+        elif any(word in text for word in ['помощь', 'правила', 'help', 'как']):
+            await help_command(update, context)
+        elif any(word in text for word in ['стат', 'счёт', 'результат', 'stats']):
+            await stats_command(update, context)
+        else:
+            await update.message.reply_text(
+                "🎮 Чтобы начать игру, нажми кнопку ниже или используй команды:\n\n"
+                "/play — начать игру\n"
+                "/help — правила\n"
+                "/stats — статистика\n"
+                "/share — поделиться\n"
+                "/about — о боте",
+                reply_markup=get_play_keyboard()
+            )
+    except Exception as e:
+        logger.error(f"Error in handle_text_message: {e}", exc_info=True)
+
+
+async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработчик нажатий на inline-кнопки."""
+    try:
+        query = update.callback_query
+        await query.answer()
+        
+        if query.data == "help":
+            help_text = (
+                "📖 *Как играть в Wordle RU*\n\n"
+                "*Цель:* угадать слово из 5 букв за 6 попыток.\n\n"
+                "*Подсказки после каждой попытки:*\n"
+                "🟩 — буква угадана и стоит на своём месте\n"
+                "🟨 — буква есть в слове, но стоит не там\n"
+                "⬜ — такой буквы в слове нет\n\n"
+                "*Советы:*\n"
+                "• Начинай с частых букв: А, О, Е, И, Н, Т, С, Р\n"
+                "• Используй разные буквы в первых попытках\n\n"
+                "Удачи! 🍀"
+            )
+            await query.edit_message_text(
+                help_text,
+                reply_markup=get_play_keyboard(),
+                parse_mode='Markdown'
+            )
+    except Exception as e:
+        logger.error(f"Error in handle_callback: {e}", exc_info=True)
+
+
+async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработчик неизвестных команд."""
+    try:
+        if not update.message:
+            return
         await update.message.reply_text(
-            "🎮 Чтобы начать игру, нажми кнопку ниже или используй команды:\n\n"
+            "🤔 Такой команды нет.\n\n"
+            "*Доступные команды:*\n"
+            "/start — главное меню\n"
             "/play — начать игру\n"
             "/help — правила\n"
             "/stats — статистика\n"
             "/share — поделиться\n"
             "/about — о боте",
-            reply_markup=get_play_keyboard()
-        )
-
-
-async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик нажатий на inline-кнопки."""
-    query = update.callback_query
-    await query.answer()
-    
-    if query.data == "help":
-        help_text = (
-            "📖 *Как играть в Wordle RU*\n\n"
-            "*Цель:* угадать слово из 5 букв за 6 попыток.\n\n"
-            "*Подсказки после каждой попытки:*\n"
-            "🟩 — буква угадана и стоит на своём месте\n"
-            "🟨 — буква есть в слове, но стоит не там\n"
-            "⬜ — такой буквы в слове нет\n\n"
-            "*Советы:*\n"
-            "• Начинай с частых букв: А, О, Е, И, Н, Т, С, Р\n"
-            "• Используй разные буквы в первых попытках\n\n"
-            "Удачи! 🍀"
-        )
-        await query.edit_message_text(
-            help_text,
             reply_markup=get_play_keyboard(),
             parse_mode='Markdown'
         )
-
-
-async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик неизвестных команд."""
-    await update.message.reply_text(
-        "🤔 Такой команды нет.\n\n"
-        "*Доступные команды:*\n"
-        "/start — главное меню\n"
-        "/play — начать игру\n"
-        "/help — правила\n"
-        "/stats — статистика\n"
-        "/share — поделиться\n"
-        "/about — о боте",
-        reply_markup=get_play_keyboard(),
-        parse_mode='Markdown'
-    )
+    except Exception as e:
+        logger.error(f"Error in unknown_command: {e}", exc_info=True)
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:

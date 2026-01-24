@@ -22,3 +22,7 @@ node_modules/
 # Logs
 *.log
 SUMMARY.md
+
+# Archives
+веб-врхивы/
+*.webarchive
