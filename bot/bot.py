@@ -57,6 +57,10 @@ def get_play_keyboard() -> InlineKeyboardMarkup:
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /start — приветствие и главное меню."""
     try:
+        if not update.message:
+            logger.warning("Received /start but update.message is None")
+            return
+        
         user = update.effective_user
         chat_type = update.effective_chat.type
         logger.info(f"Received /start from user {user.id} ({user.username}) in {chat_type}")
@@ -410,9 +414,8 @@ def main() -> None:
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
         logger.info("Text message handler registered")
         
-        # Обработчик неизвестных команд (последним, после всех CommandHandler)
-        application.add_handler(MessageHandler(filters.COMMAND, unknown_command))
-        logger.info("Unknown command handler registered")
+        # Обработчик неизвестных команд НЕ добавляем - CommandHandler сам обработает неизвестные команды
+        # Если команда не найдена, CommandHandler просто не вызовет обработчик
         
         # Обработчик ошибок
         application.add_error_handler(error_handler)
