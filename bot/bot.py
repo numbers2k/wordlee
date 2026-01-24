@@ -254,7 +254,7 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         about_text = (
             "ℹ️ *О боте Wordlee*\n\n"
             f"*Версия:* {BOT_VERSION}\n"
-            "*Словарь:* 34,421 слово\n"
+            "*Словарь:* 34,409 слов\n"
             "*Платформа:* Telegram Mini Apps\n\n"
             "*Особенности:*\n"
             "• Бесконечный режим игры\n"
@@ -410,7 +410,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             about_text = (
                 "ℹ️ *О боте Wordlee*\n\n"
                 f"*Версия:* {BOT_VERSION}\n"
-                "*Словарь:* 34,421 слово\n"
+                "*Словарь:* 34,409 слов\n"
                 "*Платформа:* Telegram Mini Apps\n\n"
                 "*Особенности:*\n"
                 "• Бесконечный режим игры\n"
