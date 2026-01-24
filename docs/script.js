@@ -1,13 +1,13 @@
 /**
  * Wordle RU - Telegram Mini App
+ * Бесконечный режим - угадывай слова без ограничений
  */
 
 const WORD_LENGTH = 5;
 const MAX_ATTEMPTS = 6;
 const FLIP_DURATION = 500;
 const FLIP_DELAY = 300;
-
-const GAME_MODE = { DAILY: 'daily', ENDLESS: 'endless' };
+const STORAGE_KEY = 'wordle_current_game';
 
 let gameState = {
     targetWord: '',
@@ -17,23 +17,18 @@ let gameState = {
     gameOver: false,
     won: false,
     evaluations: [],
-    mode: GAME_MODE.DAILY,
     gameNumber: 0
 };
 
 let tg = null;
 
-// Debug mode for testing
+// Debug mode
 const DEBUG_MODE = new URLSearchParams(window.location.search).get('debug') === 'true';
-
-// Visual debug panel for mobile testing
 let debugPanel = null;
 
 function debugLog(...args) {
     if (DEBUG_MODE) {
-        console.log('[Wordle Debug]', ...args);
-        
-        // Also show on visual debug panel
+        console.log('[Wordle]', ...args);
         if (debugPanel) {
             const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
             const line = document.createElement('div');
@@ -41,9 +36,7 @@ function debugLog(...args) {
             line.style.borderBottom = '1px solid #333';
             line.style.padding = '2px 0';
             debugPanel.insertBefore(line, debugPanel.firstChild);
-            
-            // Keep only last 20 messages
-            while (debugPanel.children.length > 20) {
+            while (debugPanel.children.length > 15) {
                 debugPanel.removeChild(debugPanel.lastChild);
             }
         }
@@ -54,185 +47,80 @@ function createDebugPanel() {
     if (!DEBUG_MODE) return;
     
     debugPanel = document.createElement('div');
-    debugPanel.id = 'debugPanel';
     debugPanel.style.cssText = `
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        max-height: 150px;
-        overflow-y: auto;
-        background: rgba(0,0,0,0.9);
-        color: #0f0;
-        font-size: 10px;
-        font-family: monospace;
-        padding: 5px;
-        z-index: 9999;
-        border-top: 2px solid #0f0;
+        position: fixed; bottom: 0; left: 0; right: 0;
+        max-height: 120px; overflow-y: auto;
+        background: rgba(0,0,0,0.9); color: #0f0;
+        font-size: 10px; font-family: monospace;
+        padding: 5px; z-index: 9999; border-top: 2px solid #0f0;
     `;
     document.body.appendChild(debugPanel);
     
-    // Add storage test button
-    const testBtn = document.createElement('button');
-    testBtn.textContent = 'Test Storage';
-    testBtn.style.cssText = 'margin: 5px; padding: 5px; font-size: 12px;';
-    testBtn.onclick = testLocalStorage;
-    debugPanel.appendChild(testBtn);
+    const btns = [
+        ['Clear', () => { localStorage.clear(); debugLog('Storage cleared!'); }],
+        ['Keys', () => { debugLog('Keys:', Object.keys(localStorage)); }],
+        ['State', () => { debugLog('gameState:', gameState); }]
+    ];
     
-    // Add clear button
-    const clearBtn = document.createElement('button');
-    clearBtn.textContent = 'Clear Storage';
-    clearBtn.style.cssText = 'margin: 5px; padding: 5px; font-size: 12px;';
-    clearBtn.onclick = () => {
-        localStorage.clear();
-        debugLog('localStorage cleared!');
-    };
-    debugPanel.appendChild(clearBtn);
-    
-    // Show all localStorage keys
-    const showKeysBtn = document.createElement('button');
-    showKeysBtn.textContent = 'Show Keys';
-    showKeysBtn.style.cssText = 'margin: 5px; padding: 5px; font-size: 12px;';
-    showKeysBtn.onclick = () => {
-        const keys = Object.keys(localStorage);
-        debugLog('localStorage keys:', keys);
-        keys.forEach(k => {
-            const val = localStorage.getItem(k);
-            debugLog(`  ${k}: ${val ? val.substring(0, 100) : 'null'}...`);
-        });
-    };
-    debugPanel.appendChild(showKeysBtn);
-}
-
-function testLocalStorage() {
-    const testKey = 'wordle_test_' + Date.now();
-    const testValue = { test: true, time: Date.now() };
-    
-    try {
-        localStorage.setItem(testKey, JSON.stringify(testValue));
-        const retrieved = localStorage.getItem(testKey);
-        const parsed = JSON.parse(retrieved);
-        localStorage.removeItem(testKey);
-        
-        if (parsed.test === true) {
-            debugLog('localStorage TEST PASSED');
-        } else {
-            debugLog('localStorage TEST FAILED - data mismatch');
-        }
-    } catch (e) {
-        debugLog('localStorage TEST FAILED:', e.message);
-    }
+    btns.forEach(([text, fn]) => {
+        const btn = document.createElement('button');
+        btn.textContent = text;
+        btn.style.cssText = 'margin: 3px; padding: 3px 8px; font-size: 11px;';
+        btn.onclick = fn;
+        debugPanel.appendChild(btn);
+    });
 }
 
 function initTelegram() {
     try {
-        debugLog('Initializing Telegram Web App...');
-        
         if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
             tg = Telegram.WebApp;
-            debugLog('Telegram Web App available, version:', tg.version);
-            debugLog('Platform:', tg.platform);
-            
-            // Inform Telegram that app is ready
             tg.ready();
-            
-            // Expand to maximum height
             tg.expand();
-            debugLog('After expand - isExpanded:', tg.isExpanded);
             
-            // Set colors
             if (tg.setHeaderColor) tg.setHeaderColor('#121213');
             if (tg.setBackgroundColor) tg.setBackgroundColor('#121213');
             
-            // Request fullscreen mode (Bot API 8.0+)
-            if (tg.isVersionAtLeast && tg.isVersionAtLeast('8.0')) {
-                debugLog('API 8.0+ detected, requesting fullscreen...');
-                if (tg.requestFullscreen) {
-                    tg.requestFullscreen();
-                    debugLog('Fullscreen requested');
-                }
+            if (tg.isVersionAtLeast && tg.isVersionAtLeast('8.0') && tg.requestFullscreen) {
+                tg.requestFullscreen();
             }
             
-            // Apply safe area insets
             updateSafeAreas();
             
-            // Track safe area changes
             if (tg.onEvent) {
                 tg.onEvent('safeAreaChanged', updateSafeAreas);
                 tg.onEvent('contentSafeAreaChanged', updateSafeAreas);
                 tg.onEvent('viewportChanged', updateSafeAreas);
-                tg.onEvent('fullscreenChanged', () => {
-                    debugLog('Fullscreen changed:', tg.isFullscreen);
-                    updateSafeAreas();
-                });
             }
-        } else {
-            debugLog('Telegram Web App not available');
         }
         document.body.classList.add('dark-theme');
     } catch (e) {
         console.error('Telegram init error:', e);
-        debugLog('Init error:', e.stack);
     }
 }
 
 function updateSafeAreas() {
     if (!tg) return;
     
-    debugLog('Updating safe areas...');
-    
-    // Use contentSafeAreaInset to avoid overlapping with Telegram UI
     if (tg.contentSafeAreaInset) {
-        const top = tg.contentSafeAreaInset.top || 0;
-        const bottom = tg.contentSafeAreaInset.bottom || 0;
-        const left = tg.contentSafeAreaInset.left || 0;
-        const right = tg.contentSafeAreaInset.right || 0;
-        
-        document.documentElement.style.setProperty('--tg-safe-top', `${top}px`);
-        document.documentElement.style.setProperty('--tg-safe-bottom', `${bottom}px`);
-        document.documentElement.style.setProperty('--tg-safe-left', `${left}px`);
-        document.documentElement.style.setProperty('--tg-safe-right', `${right}px`);
-        
-        debugLog('Content safe area insets:', { top, bottom, left, right });
+        const { top, bottom, left, right } = tg.contentSafeAreaInset;
+        document.documentElement.style.setProperty('--tg-safe-top', `${top || 0}px`);
+        document.documentElement.style.setProperty('--tg-safe-bottom', `${bottom || 0}px`);
+        document.documentElement.style.setProperty('--tg-safe-left', `${left || 0}px`);
+        document.documentElement.style.setProperty('--tg-safe-right', `${right || 0}px`);
     }
     
-    // Also account for device system safe areas
     if (tg.safeAreaInset) {
-        const deviceTop = tg.safeAreaInset.top || 0;
-        const deviceBottom = tg.safeAreaInset.bottom || 0;
-        const deviceLeft = tg.safeAreaInset.left || 0;
-        const deviceRight = tg.safeAreaInset.right || 0;
-        
-        document.documentElement.style.setProperty('--device-safe-top', `${deviceTop}px`);
-        document.documentElement.style.setProperty('--device-safe-bottom', `${deviceBottom}px`);
-        document.documentElement.style.setProperty('--device-safe-left', `${deviceLeft}px`);
-        document.documentElement.style.setProperty('--device-safe-right', `${deviceRight}px`);
-        
-        debugLog('Device safe area insets:', { deviceTop, deviceBottom, deviceLeft, deviceRight });
+        const { top, bottom, left, right } = tg.safeAreaInset;
+        document.documentElement.style.setProperty('--device-safe-top', `${top || 0}px`);
+        document.documentElement.style.setProperty('--device-safe-bottom', `${bottom || 0}px`);
+        document.documentElement.style.setProperty('--device-safe-left', `${left || 0}px`);
+        document.documentElement.style.setProperty('--device-safe-right', `${right || 0}px`);
     }
-    
-    // Log viewport info
-    if (tg.viewportHeight) {
-        debugLog('Viewport height:', tg.viewportHeight);
-        debugLog('Viewport stable height:', tg.viewportStableHeight);
-    }
-}
-
-function getDailyWord() {
-    const today = new Date();
-    const startDate = new Date('2024-01-01');
-    const days = Math.floor((today - startDate) / (1000 * 60 * 60 * 24));
-    return WORDS_TARGET[Math.abs(days) % WORDS_TARGET.length].toUpperCase();
 }
 
 function getRandomWord() {
     return WORDS_TARGET[Math.floor(Math.random() * WORDS_TARGET.length)].toUpperCase();
-}
-
-function getGameNumber() {
-    const today = new Date();
-    const startDate = new Date('2024-01-01');
-    return Math.floor((today - startDate) / (1000 * 60 * 60 * 24)) + 1;
 }
 
 function showToast(message, duration = 2000, type = '') {
@@ -306,8 +194,6 @@ function addLetter(letter) {
         tile.classList.add('filled');
     }
     gameState.currentTile++;
-    
-    // Autosave after each change
     saveGameState();
 }
 
@@ -323,8 +209,6 @@ function removeLetter() {
         tile.textContent = '';
         tile.classList.remove('filled');
     }
-    
-    // Autosave after each change
     saveGameState();
 }
 
@@ -358,10 +242,7 @@ function submitWord() {
             setTimeout(showStatsModal, 1500);
         } else if (gameState.currentRow >= MAX_ATTEMPTS - 1) {
             gameState.gameOver = true;
-            
-            // Show the correct word more prominently
             showLossMessage(gameState.targetWord);
-            
             updateStats(false);
             setTimeout(showStatsModal, 2500);
         } else {
@@ -434,27 +315,20 @@ function celebrateWin() {
     });
 }
 
-// Show loss message with the correct word
 function showLossMessage(word) {
-    // Show toast with the correct word
     showToast(`Правильное слово: ${word.toUpperCase()}`, 4000, 'error');
     
-    // Add message to stats modal
     const statsModal = document.getElementById('statsModal');
     if (statsModal) {
-        // Add the correct answer display element if it doesn't exist
         let answerDisplay = statsModal.querySelector('.correct-answer-display');
         if (!answerDisplay) {
             answerDisplay = document.createElement('div');
             answerDisplay.className = 'correct-answer-display';
-            
             const modalBody = statsModal.querySelector('.modal-body');
             if (modalBody) {
-                // Insert at the beginning of modal body
                 modalBody.insertBefore(answerDisplay, modalBody.firstChild);
             }
         }
-        
         answerDisplay.innerHTML = `
             <div class="loss-message">
                 <p class="loss-text">Правильное слово:</p>
@@ -477,6 +351,7 @@ function updateKeyboard(letter, status) {
     key.dataset.status = status;
 }
 
+// Statistics
 function loadStats() {
     try {
         const saved = localStorage.getItem('wordle_stats');
@@ -484,7 +359,9 @@ function loadStats() {
             gamesPlayed: 0, gamesWon: 0, currentStreak: 0, maxStreak: 0,
             guessDistribution: [0, 0, 0, 0, 0, 0]
         };
-    } catch { return { gamesPlayed: 0, gamesWon: 0, currentStreak: 0, maxStreak: 0, guessDistribution: [0, 0, 0, 0, 0, 0] }; }
+    } catch { 
+        return { gamesPlayed: 0, gamesWon: 0, currentStreak: 0, maxStreak: 0, guessDistribution: [0, 0, 0, 0, 0, 0] }; 
+    }
 }
 
 function saveStats(stats) {
@@ -539,168 +416,61 @@ function displayStats() {
     if (el('playAgainBtn')) el('playAgainBtn').style.display = gameState.gameOver ? 'inline-flex' : 'none';
 }
 
-function getStorageKey() {
-    if (gameState.mode === GAME_MODE.DAILY) {
-        const date = new Date().toISOString().split('T')[0];
-        return `wordle_daily_${date}`;
-    } else if (gameState.mode === GAME_MODE.ENDLESS) {
-        return 'wordle_endless_current';
-    }
-    return null;
-}
-
-function showStorageInfo() {
-    const key = getStorageKey();
-    debugLog('Current storage key:', key);
-    
-    if (key) {
-        const data = localStorage.getItem(key);
-        if (data) {
-            try {
-                const parsed = JSON.parse(data);
-                debugLog('Stored data timestamp:', new Date(parsed.timestamp).toLocaleString());
-                debugLog('Stored currentRow:', parsed.currentRow);
-                debugLog('Stored board[0]:', parsed.board ? parsed.board[0] : 'no board');
-            } catch (e) {
-                debugLog('Error parsing stored data:', e.message);
-            }
-        } else {
-            debugLog('No data found for key:', key);
-        }
-    }
-}
-
+// Game state persistence
 function saveGameState() {
-    const key = getStorageKey();
-    if (!key) {
-        debugLog('saveGameState: No key (endless mode), skipping save');
-        return;
-    }
-    
     try {
-        // Глубокое копирование board чтобы избежать проблем с ссылками
-        const boardCopy = gameState.board.map(row => [...row]);
-        const evalsCopy = gameState.evaluations.map(row => row ? [...row] : null);
-        
         const state = {
-            board: boardCopy,
+            board: gameState.board.map(row => [...row]),
             currentRow: gameState.currentRow,
             currentTile: gameState.currentTile,
             gameOver: gameState.gameOver,
             won: gameState.won,
-            evaluations: evalsCopy,
-            mode: gameState.mode,
+            evaluations: gameState.evaluations.map(row => row ? [...row] : null),
             targetWord: gameState.targetWord,
             gameNumber: gameState.gameNumber,
             timestamp: Date.now()
         };
         
-        const stateJson = JSON.stringify(state);
-        localStorage.setItem(key, stateJson);
-        
-        debugLog('Saved game state:', {
-            key,
-            currentRow: state.currentRow,
-            currentTile: state.currentTile,
-            gameOver: state.gameOver,
-            boardFirstRow: state.board[0],
-            size: stateJson.length
-        });
-        
-        // Also save to Telegram Cloud Storage if available
-        if (tg && tg.CloudStorage) {
-            tg.CloudStorage.setItem(key, stateJson, (error) => {
-                if (error) {
-                    debugLog('Cloud storage save failed:', error);
-                } else {
-                    debugLog('Game state saved to Cloud Storage');
-                }
-            });
-        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        debugLog('Saved:', { row: state.currentRow, tile: state.currentTile, over: state.gameOver });
     } catch (e) {
         console.error('Save failed:', e);
-        debugLog('Save error:', e.message);
     }
 }
 
 function loadGameState() {
-    const key = getStorageKey();
-    debugLog('Loading game state, key:', key);
-    
-    if (!key) {
-        debugLog('No storage key (not daily mode)');
-        return null;
-    }
-    
     try {
-        const saved = localStorage.getItem(key);
-        
-        if (!saved) {
-            debugLog('No saved state found in localStorage');
-            return null;
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            const state = JSON.parse(saved);
+            debugLog('Loaded:', { row: state.currentRow, tile: state.currentTile, over: state.gameOver });
+            return state;
         }
-        
-        const localState = JSON.parse(saved);
-        debugLog('Loaded state from localStorage:', {
-            hasBoard: !!localState.board,
-            boardRows: localState.board ? localState.board.length : 0,
-            currentRow: localState.currentRow,
-            currentTile: localState.currentTile,
-            gameOver: localState.gameOver,
-            hasTargetWord: !!localState.targetWord,
-            evaluationsCount: localState.evaluations ? localState.evaluations.filter(e => e).length : 0
-        });
-        
-        return localState;
     } catch (e) {
         console.error('Load failed:', e);
-        debugLog('Load error:', e.message);
-        return null;
     }
+    return null;
 }
 
-// Setup autosave event listeners
 function setupAutosave() {
-    // Save when page is about to unload
-    window.addEventListener('beforeunload', () => {
-        saveGameState();
-        debugLog('Saved on beforeunload');
-    });
-    
-    // Save when tab becomes hidden (user switches apps)
+    window.addEventListener('beforeunload', saveGameState);
     document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            saveGameState();
-            debugLog('Saved on visibility change (hidden)');
-        }
+        if (document.hidden) saveGameState();
     });
     
-    // Save when Telegram viewport changes (minimizing app)
     if (tg && tg.onEvent) {
         tg.onEvent('viewportChanged', () => {
-            if (!tg.isExpanded) {
-                saveGameState();
-                debugLog('Saved on viewport change (collapsed)');
-            }
+            if (!tg.isExpanded) saveGameState();
         });
     }
 }
 
-function validateAndFixState(state) {
-    // Убедимся что evaluations это массив
-    if (!Array.isArray(state.evaluations)) {
-        state.evaluations = [];
-    }
+function restoreGameState(state) {
+    // Validate state
+    if (!Array.isArray(state.evaluations)) state.evaluations = [];
+    if (!Array.isArray(state.board)) return false;
     
-    // Убедимся что board это массив массивов
-    if (!Array.isArray(state.board)) {
-        state.board = [];
-        for (let i = 0; i < MAX_ATTEMPTS; i++) {
-            state.board.push(new Array(WORD_LENGTH).fill(''));
-        }
-    }
-    
-    // Найти правильный currentRow на основе заполненных строк
+    // Find correct currentRow
     let completedRows = 0;
     for (let i = 0; i < MAX_ATTEMPTS; i++) {
         if (state.evaluations[i] && state.evaluations[i].length === WORD_LENGTH) {
@@ -708,41 +478,23 @@ function validateAndFixState(state) {
         }
     }
     
-    // Если игра не окончена, currentRow должен быть следующей пустой строкой
     if (!state.gameOver) {
         state.currentRow = Math.min(completedRows, MAX_ATTEMPTS - 1);
-        // Проверяем currentTile - считаем непустые буквы в текущем ряду
         const currentRowContent = state.board[state.currentRow] || [];
         state.currentTile = currentRowContent.filter(c => c && c !== '').length;
     }
     
-    debugLog('validateAndFixState result:', {
-        completedRows,
-        currentRow: state.currentRow,
-        currentTile: state.currentTile,
-        gameOver: state.gameOver
-    });
-    
-    return state;
-}
-
-function restoreGameState(state) {
-    debugLog('Restoring game state, raw state:', JSON.stringify(state).substring(0, 500));
-    
-    state = validateAndFixState(state);
-    
-    // Копируем состояние
+    // Copy state
     gameState.board = state.board;
     gameState.currentRow = state.currentRow;
     gameState.currentTile = state.currentTile;
     gameState.gameOver = state.gameOver;
     gameState.won = state.won;
-    gameState.evaluations = state.evaluations || [];
-    gameState.mode = state.mode || GAME_MODE.DAILY;
+    gameState.evaluations = state.evaluations;
+    gameState.targetWord = state.targetWord;
+    gameState.gameNumber = state.gameNumber;
     
-    debugLog('After restore - currentRow:', gameState.currentRow, 'currentTile:', gameState.currentTile);
-    
-    // Восстанавливаем визуальное состояние доски
+    // Restore visual state
     for (let row = 0; row < MAX_ATTEMPTS; row++) {
         const rowData = state.board[row];
         if (!rowData) continue;
@@ -751,86 +503,25 @@ function restoreGameState(state) {
             const letter = rowData[col];
             const tile = document.querySelector(`.tile[data-row="${row}"][data-col="${col}"]`);
             
-            if (!tile) {
-                debugLog(`Tile not found: row=${row}, col=${col}`);
-                continue;
-            }
-            
-            if (letter && letter !== '') {
+            if (tile && letter && letter !== '') {
                 tile.textContent = letter;
                 tile.classList.add('filled');
                 
-                // Добавляем цвета только для оценённых рядов
                 const rowEval = state.evaluations[row];
                 if (rowEval && rowEval[col]) {
                     tile.classList.add(rowEval[col]);
                     updateKeyboard(letter, rowEval[col]);
                 }
-                
-                debugLog(`Restored tile [${row}][${col}]: "${letter}", eval: ${rowEval ? rowEval[col] : 'none'}`);
             }
         }
     }
     
-    debugLog('Game state restored successfully');
-}
-
-function loadEndlessGame() {
-    try {
-        const saved = localStorage.getItem('wordle_endless_current');
-        if (saved) {
-            const state = JSON.parse(saved);
-            debugLog('Loaded endless game:', {
-                gameOver: state.gameOver,
-                currentRow: state.currentRow,
-                hasBoard: !!state.board
-            });
-            return state;
-        }
-    } catch (e) {
-        debugLog('Error loading endless game:', e);
-    }
-    return null;
-}
-
-function restoreEndlessGame(saved) {
-    debugLog('=== RESTORE ENDLESS GAME ===');
-    
-    gameState = {
-        targetWord: saved.targetWord || getRandomWord(),
-        currentRow: 0,
-        currentTile: 0,
-        board: [],
-        gameOver: false,
-        won: false,
-        evaluations: [],
-        mode: GAME_MODE.ENDLESS,
-        gameNumber: saved.gameNumber || Math.floor(Math.random() * 100000)
-    };
-    
-    createBoard();
-    resetKeyboard();
-    
-    // Clear any previous loss message
-    const answerDisplay = document.querySelector('.correct-answer-display');
-    if (answerDisplay) {
-        answerDisplay.remove();
-    }
-    
-    restoreGameState(saved);
-    debugLog('Endless game restored, currentRow:', gameState.currentRow);
+    debugLog('Restored game, row:', gameState.currentRow, 'tile:', gameState.currentTile);
+    return true;
 }
 
 function startNewGame() {
-    debugLog('=== START NEW ENDLESS GAME ===');
-    
-    // Clear previous endless game save
-    try {
-        localStorage.removeItem('wordle_endless_current');
-        debugLog('Cleared previous endless game save');
-    } catch (e) {
-        debugLog('Error clearing endless save:', e);
-    }
+    debugLog('Starting new game...');
     
     gameState = {
         targetWord: getRandomWord(),
@@ -840,85 +531,22 @@ function startNewGame() {
         gameOver: false,
         won: false,
         evaluations: [],
-        mode: GAME_MODE.ENDLESS,
-        gameNumber: Math.floor(Math.random() * 100000)
+        gameNumber: Date.now()
     };
-    
-    debugLog('New endless game targetWord:', gameState.targetWord);
     
     createBoard();
     resetKeyboard();
     hideStatsModal();
     
-    // Clear any previous loss message
+    // Clear loss message
     const answerDisplay = document.querySelector('.correct-answer-display');
-    if (answerDisplay) {
-        answerDisplay.remove();
-    }
+    if (answerDisplay) answerDisplay.remove();
     
-    // Save initial state
     saveGameState();
+    debugLog('New game started, word:', gameState.targetWord);
 }
 
-function startDailyGame() {
-    debugLog('=== START DAILY GAME ===');
-    showStorageInfo();
-    
-    const dailyWord = getDailyWord();
-    const gameNum = getGameNumber();
-    
-    gameState = {
-        targetWord: dailyWord,
-        currentRow: 0,
-        currentTile: 0,
-        board: [],
-        gameOver: false,
-        won: false,
-        evaluations: [],
-        mode: GAME_MODE.DAILY,
-        gameNumber: gameNum
-    };
-    
-    debugLog('Initial gameState created, targetWord:', dailyWord, 'gameNumber:', gameNum);
-    
-    createBoard();
-    resetKeyboard();
-    
-    // Clear any previous loss message
-    const answerDisplay = document.querySelector('.correct-answer-display');
-    if (answerDisplay) {
-        answerDisplay.remove();
-    }
-    
-    // Try to restore saved game
-    const saved = loadGameState();
-    
-    if (saved && saved.board && saved.board.length > 0) {
-        debugLog('Found saved state!');
-        debugLog('Saved timestamp:', saved.timestamp ? new Date(saved.timestamp).toLocaleString() : 'none');
-        debugLog('Saved currentRow:', saved.currentRow, 'currentTile:', saved.currentTile);
-        debugLog('Saved board[0]:', JSON.stringify(saved.board[0]));
-        debugLog('Saved board[1]:', JSON.stringify(saved.board[1]));
-        
-        // Restore target word from saved state (important for consistency)
-        if (saved.targetWord) {
-            gameState.targetWord = saved.targetWord;
-            debugLog('Using saved targetWord:', saved.targetWord);
-        }
-        
-        restoreGameState(saved);
-        
-        debugLog('AFTER RESTORE - currentRow:', gameState.currentRow, 
-                 'currentTile:', gameState.currentTile,
-                 'gameOver:', gameState.gameOver);
-        debugLog('AFTER RESTORE - board[0]:', JSON.stringify(gameState.board[0]));
-    } else {
-        debugLog('No valid saved state found');
-        debugLog('saved object:', saved ? 'exists' : 'null');
-        debugLog('saved.board:', saved?.board ? 'exists, length=' + saved.board.length : 'missing');
-    }
-}
-
+// Modals
 function showHelpModal() {
     const modal = document.getElementById('helpModal');
     if (modal) modal.classList.add('active');
@@ -941,10 +569,9 @@ function hideStatsModal() {
 }
 
 function shareResult() {
-    const num = gameState.mode === GAME_MODE.DAILY ? getGameNumber() : '∞';
     const attempts = gameState.won ? gameState.currentRow + 1 : 'X';
     
-    let text = `Wordle RU #${num} ${attempts}/${MAX_ATTEMPTS}\n\n`;
+    let text = `Wordle RU ${attempts}/${MAX_ATTEMPTS}\n\n`;
     
     for (let row = 0; row < gameState.evaluations.length; row++) {
         if (!gameState.evaluations[row]) continue;
@@ -961,6 +588,7 @@ function shareResult() {
         .catch(() => showToast('Не удалось скопировать', 2000, 'error'));
 }
 
+// Input handlers
 function handleKeyClick(e) {
     const key = e.target.closest('.key');
     if (!key) return;
@@ -992,24 +620,31 @@ function handleModalClick(e) {
     }
 }
 
+// Init
 function init() {
     createDebugPanel();
-    debugLog('=== INIT STARTED ===');
+    debugLog('Init started');
     
     initTelegram();
     
-    // Check if there's an in-progress endless game to restore
-    const endlessSave = loadEndlessGame();
-    if (endlessSave && !endlessSave.gameOver) {
-        debugLog('Found in-progress endless game, restoring...');
-        restoreEndlessGame(endlessSave);
+    // Try to restore saved game
+    const saved = loadGameState();
+    
+    if (saved && saved.board && saved.board.length > 0 && !saved.gameOver) {
+        // Restore in-progress game
+        gameState.targetWord = saved.targetWord || getRandomWord();
+        createBoard();
+        resetKeyboard();
+        restoreGameState(saved);
+        debugLog('Restored in-progress game');
     } else {
-        debugLog('No in-progress endless game, starting daily...');
-        startDailyGame();
+        // Start new game
+        startNewGame();
     }
     
     setupAutosave();
     
+    // Event listeners
     document.getElementById('keyboard')?.addEventListener('click', handleKeyClick);
     document.addEventListener('keydown', handleKeyDown);
     
@@ -1022,16 +657,13 @@ function init() {
     document.getElementById('shareBtn')?.addEventListener('click', shareResult);
     document.getElementById('playAgainBtn')?.addEventListener('click', startNewGame);
     
+    // Show help on first visit
     if (!localStorage.getItem('wordle_has_played')) {
         showHelpModal();
         localStorage.setItem('wordle_has_played', 'true');
     }
     
-    if (new URLSearchParams(window.location.search).get('view') === 'stats') {
-        showStatsModal();
-    }
-    
-    debugLog('Game initialized');
+    debugLog('Init complete');
 }
 
 if (document.readyState === 'loading') {
