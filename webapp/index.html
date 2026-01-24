@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#121213">
+    <title>Wordle RU</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body class="dark-theme">
+    <div class="container">
+        <header class="header">
+            <button class="icon-btn" id="helpBtn" aria-label="Помощь">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                    <circle cx="12" cy="17" r="0.5" fill="currentColor"/>
+                </svg>
+            </button>
+            <h1 class="title">WORDLE</h1>
+            <button class="icon-btn" id="statsBtn" aria-label="Статистика">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10"/>
+                    <line x1="12" y1="20" x2="12" y2="4"/>
+                    <line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+            </button>
+        </header>
+
+        <main class="game-container">
+            <div class="board" id="board"></div>
+        </main>
+
+        <div class="keyboard" id="keyboard">
+            <div class="keyboard-row">
+                <button class="key" data-key="й">й</button>
+                <button class="key" data-key="ц">ц</button>
+                <button class="key" data-key="у">у</button>
+                <button class="key" data-key="к">к</button>
+                <button class="key" data-key="е">е</button>
+                <button class="key" data-key="н">н</button>
+                <button class="key" data-key="г">г</button>
+                <button class="key" data-key="ш">ш</button>
+                <button class="key" data-key="щ">щ</button>
+                <button class="key" data-key="з">з</button>
+                <button class="key" data-key="х">х</button>
+                <button class="key" data-key="ъ">ъ</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="key" data-key="ф">ф</button>
+                <button class="key" data-key="ы">ы</button>
+                <button class="key" data-key="в">в</button>
+                <button class="key" data-key="а">а</button>
+                <button class="key" data-key="п">п</button>
+                <button class="key" data-key="р">р</button>
+                <button class="key" data-key="о">о</button>
+                <button class="key" data-key="л">л</button>
+                <button class="key" data-key="д">д</button>
+                <button class="key" data-key="ж">ж</button>
+                <button class="key" data-key="э">э</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="key key-wide" data-key="Enter">ОК</button>
+                <button class="key" data-key="я">я</button>
+                <button class="key" data-key="ч">ч</button>
+                <button class="key" data-key="с">с</button>
+                <button class="key" data-key="м">м</button>
+                <button class="key" data-key="и">и</button>
+                <button class="key" data-key="т">т</button>
+                <button class="key" data-key="ь">ь</button>
+                <button class="key" data-key="б">б</button>
+                <button class="key" data-key="ю">ю</button>
+                <button class="key key-wide" data-key="Backspace">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/>
+                        <line x1="18" y1="9" x2="12" y2="15"/>
+                        <line x1="12" y1="9" x2="18" y2="15"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="helpModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Как играть</h2>
+                <button class="modal-close" id="helpClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Угадайте слово за 6 попыток.</p>
+                <p>Каждая попытка должна быть словом из 5 букв. Нажмите ОК для проверки.</p>
+                <p>После каждой попытки цвет плиток покажет, насколько вы близки к ответу.</p>
+                
+                <div class="examples">
+                    <p><strong>Примеры</strong></p>
+                    
+                    <div class="example-row">
+                        <div class="example-tile correct">М</div>
+                        <div class="example-tile">О</div>
+                        <div class="example-tile">Л</div>
+                        <div class="example-tile">О</div>
+                        <div class="example-tile">К</div>
+                    </div>
+                    <p class="example-desc">Буква <strong>М</strong> есть в слове и на правильном месте.</p>
+                    
+                    <div class="example-row">
+                        <div class="example-tile">П</div>
+                        <div class="example-tile present">И</div>
+                        <div class="example-tile">Л</div>
+                        <div class="example-tile">О</div>
+                        <div class="example-tile">Т</div>
+                    </div>
+                    <p class="example-desc">Буква <strong>И</strong> есть в слове, но не на том месте.</p>
+                    
+                    <div class="example-row">
+                        <div class="example-tile">С</div>
+                        <div class="example-tile">Л</div>
+                        <div class="example-tile">О</div>
+                        <div class="example-tile">В</div>
+                        <div class="example-tile absent">А</div>
+                    </div>
+                    <p class="example-desc">Буквы <strong>А</strong> нет в слове.</p>
+                </div>
+                
+                <p class="hint">Каждый день — новое слово!</p>
+                <p class="hint">После игры можно продолжить в бесконечном режиме.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="statsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Статистика</h2>
+                <button class="modal-close" id="statsClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="stats-container">
+                    <div class="stat-item">
+                        <div class="stat-value" id="gamesPlayed">0</div>
+                        <div class="stat-label">Сыграно</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="winPercent">0</div>
+                        <div class="stat-label">% побед</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="currentStreak">0</div>
+                        <div class="stat-label">Текущая серия</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="maxStreak">0</div>
+                        <div class="stat-label">Макс. серия</div>
+                    </div>
+                </div>
+                
+                <h3>Распределение попыток</h3>
+                <div class="distribution" id="distribution"></div>
+                
+                <div class="share-section" id="shareSection" style="display: none;">
+                    <button class="share-btn" id="shareBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="18" cy="5" r="3"/>
+                            <circle cx="6" cy="12" r="3"/>
+                            <circle cx="18" cy="19" r="3"/>
+                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                        </svg>
+                        Поделиться
+                    </button>
+                    <button class="play-again-btn" id="playAgainBtn" style="display: none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23 4 23 10 17 10"/>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                        </svg>
+                        Играть ещё
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="words.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
