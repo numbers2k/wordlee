@@ -22,6 +22,8 @@ let gameState = {
 };
 
 let tg = null;
+let isMobile = false;
+let hiddenInput = null;
 
 function initTelegram() {
     try {
@@ -31,12 +33,16 @@ function initTelegram() {
             tg.expand();
             if (tg.setHeaderColor) tg.setHeaderColor('#121213');
             if (tg.setBackgroundColor) tg.setBackgroundColor('#121213');
-            if (tg.requestFullscreen) tg.requestFullscreen();
         }
         document.body.classList.add('dark-theme');
     } catch (e) {
         console.error('Telegram init error:', e);
     }
+}
+
+function detectMobile() {
+    isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    return isMobile;
 }
 
 function getDailyWord() {
@@ -108,11 +114,10 @@ function createBoard() {
     }
 }
 
-function resetKeyboard() {
-    document.querySelectorAll('.key').forEach(key => {
-        key.classList.remove('correct', 'present', 'absent');
-        delete key.dataset.status;
-    });
+function focusInput() {
+    if (isMobile && hiddenInput && !gameState.gameOver) {
+        hiddenInput.focus();
+    }
 }
 
 function addLetter(letter) {
@@ -161,7 +166,7 @@ function submitWord() {
     }
     
     const evaluation = evaluateGuess(guess);
-    gameState.evaluations.push(evaluation);
+    gameState.evaluations[gameState.currentRow] = evaluation;
     revealRow(gameState.currentRow, evaluation);
     
     setTimeout(() => {
@@ -189,7 +194,6 @@ function evaluateGuess(guess) {
     const target = normalizeWord(gameState.targetWord).split('');
     const guessArr = normalizeWord(guess).split('');
     
-    // Сначала зелёные (точные совпадения)
     for (let i = 0; i < WORD_LENGTH; i++) {
         if (guessArr[i] === target[i]) {
             evaluation[i] = 'correct';
@@ -198,7 +202,6 @@ function evaluateGuess(guess) {
         }
     }
     
-    // Затем жёлтые (буква есть, но не на месте)
     for (let i = 0; i < WORD_LENGTH; i++) {
         if (guessArr[i] === null) continue;
         const idx = target.indexOf(guessArr[i]);
@@ -223,7 +226,6 @@ function revealRow(rowIndex, evaluation) {
             tile.classList.add('flip');
             setTimeout(() => {
                 tile.classList.add(evaluation[i]);
-                updateKeyboard(guess[i], evaluation[i]);
             }, FLIP_DURATION / 2);
         }, i * FLIP_DELAY);
     });
@@ -246,19 +248,6 @@ function celebrateWin() {
     row.querySelectorAll('.tile').forEach((tile, i) => {
         setTimeout(() => tile.classList.add('win'), i * 100);
     });
-}
-
-function updateKeyboard(letter, status) {
-    const key = document.querySelector(`.key[data-key="${letter.toLowerCase().replace('ё', 'е')}"]`);
-    if (!key) return;
-    
-    const current = key.dataset.status;
-    if (current === 'correct') return;
-    if (current === 'present' && status !== 'correct') return;
-    
-    key.classList.remove('correct', 'present', 'absent');
-    key.classList.add(status);
-    key.dataset.status = status;
 }
 
 function loadStats() {
@@ -355,8 +344,44 @@ function loadGameState() {
     } catch { return null; }
 }
 
+function validateAndFixState(state) {
+    // Найти первую пустую строку и установить currentRow на неё
+    let firstEmptyRow = 0;
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+        const rowHasContent = state.board[i] && state.board[i].some(cell => cell !== '');
+        const rowHasEvaluation = state.evaluations[i] && state.evaluations[i].length === WORD_LENGTH;
+        
+        if (rowHasContent && rowHasEvaluation) {
+            firstEmptyRow = i + 1;
+        } else if (rowHasContent && !rowHasEvaluation) {
+            // Строка с контентом но без оценки - это текущая строка
+            firstEmptyRow = i;
+            state.currentTile = state.board[i].filter(c => c !== '').length;
+            break;
+        } else {
+            break;
+        }
+    }
+    
+    state.currentRow = Math.min(firstEmptyRow, MAX_ATTEMPTS - 1);
+    
+    // Если все строки заполнены и есть оценки, игра окончена
+    if (firstEmptyRow >= MAX_ATTEMPTS || state.gameOver) {
+        state.currentTile = 0;
+    }
+    
+    return state;
+}
+
 function restoreGameState(state) {
-    Object.assign(gameState, state);
+    state = validateAndFixState(state);
+    
+    gameState.board = state.board;
+    gameState.currentRow = state.currentRow;
+    gameState.currentTile = state.currentTile;
+    gameState.gameOver = state.gameOver;
+    gameState.won = state.won;
+    gameState.evaluations = state.evaluations || [];
     gameState.mode = state.mode || GAME_MODE.DAILY;
     
     for (let row = 0; row < state.board.length; row++) {
@@ -367,9 +392,8 @@ function restoreGameState(state) {
                 if (tile) {
                     tile.textContent = letter;
                     tile.classList.add('filled');
-                    if (state.evaluations[row]) {
+                    if (state.evaluations[row] && state.evaluations[row][col]) {
                         tile.classList.add(state.evaluations[row][col]);
-                        updateKeyboard(letter, state.evaluations[row][col]);
                     }
                 }
             }
@@ -390,8 +414,8 @@ function startNewGame() {
         gameNumber: Math.floor(Math.random() * 100000)
     };
     createBoard();
-    resetKeyboard();
     hideStatsModal();
+    focusInput();
 }
 
 function startDailyGame() {
@@ -407,7 +431,6 @@ function startDailyGame() {
         gameNumber: getGameNumber()
     };
     createBoard();
-    resetKeyboard();
     
     const saved = loadGameState();
     if (saved) restoreGameState(saved);
@@ -421,6 +444,7 @@ function showHelpModal() {
 function hideHelpModal() {
     const modal = document.getElementById('helpModal');
     if (modal) modal.classList.remove('active');
+    focusInput();
 }
 
 function showStatsModal() {
@@ -432,6 +456,7 @@ function showStatsModal() {
 function hideStatsModal() {
     const modal = document.getElementById('statsModal');
     if (modal) modal.classList.remove('active');
+    focusInput();
 }
 
 function shareResult() {
@@ -440,7 +465,8 @@ function shareResult() {
     
     let text = `Wordle RU #${num} ${attempts}/${MAX_ATTEMPTS}\n\n`;
     
-    for (let row = 0; row <= gameState.currentRow; row++) {
+    for (let row = 0; row < gameState.evaluations.length; row++) {
+        if (!gameState.evaluations[row]) continue;
         for (let col = 0; col < WORD_LENGTH; col++) {
             const s = gameState.evaluations[row][col];
             text += s === 'correct' ? '🟩' : s === 'present' ? '🟨' : '⬜';
@@ -454,14 +480,18 @@ function shareResult() {
         .catch(() => showToast('Не удалось скопировать', 2000, 'error'));
 }
 
-function handleKeyClick(e) {
-    const key = e.target.closest('.key');
-    if (!key) return;
+function handleHiddenInput(e) {
+    const value = e.target.value;
+    e.target.value = '';
     
-    const val = key.dataset.key;
-    if (val === 'Enter') submitWord();
-    else if (val === 'Backspace') removeLetter();
-    else addLetter(val);
+    if (!value) return;
+    
+    // Обрабатываем каждый введённый символ
+    for (const char of value) {
+        if (/^[а-яёА-ЯЁ]$/.test(char)) {
+            addLetter(char);
+        }
+    }
 }
 
 function handleKeyDown(e) {
@@ -473,9 +503,15 @@ function handleKeyDown(e) {
         return;
     }
     
-    if (e.key === 'Enter') submitWord();
-    else if (e.key === 'Backspace') removeLetter();
-    else if (/^[а-яёА-ЯЁ]$/.test(e.key)) addLetter(e.key);
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        submitWord();
+    } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        removeLetter();
+    } else if (/^[а-яёА-ЯЁ]$/.test(e.key)) {
+        addLetter(e.key);
+    }
 }
 
 function handleModalClick(e) {
@@ -485,13 +521,41 @@ function handleModalClick(e) {
     }
 }
 
+function handleBoardClick() {
+    focusInput();
+}
+
 function init() {
     initTelegram();
+    detectMobile();
     startDailyGame();
     
-    document.getElementById('keyboard')?.addEventListener('click', handleKeyClick);
+    hiddenInput = document.getElementById('hiddenInput');
+    
+    // Обработка ввода с нативной клавиатуры
+    if (hiddenInput) {
+        hiddenInput.addEventListener('input', handleHiddenInput);
+        hiddenInput.addEventListener('keydown', handleKeyDown);
+    }
+    
+    // Обработка ввода с физической клавиатуры
     document.addEventListener('keydown', handleKeyDown);
     
+    // Клик по полю вызывает клавиатуру на мобильных
+    document.getElementById('board')?.addEventListener('click', handleBoardClick);
+    document.querySelector('.game-container')?.addEventListener('click', handleBoardClick);
+    
+    // Кнопки управления для мобильных
+    document.getElementById('backspaceBtn')?.addEventListener('click', () => {
+        removeLetter();
+        focusInput();
+    });
+    document.getElementById('submitBtn')?.addEventListener('click', () => {
+        submitWord();
+        focusInput();
+    });
+    
+    // Модальные окна
     document.getElementById('helpBtn')?.addEventListener('click', showHelpModal);
     document.getElementById('statsBtn')?.addEventListener('click', showStatsModal);
     document.getElementById('helpClose')?.addEventListener('click', hideHelpModal);
@@ -501,6 +565,7 @@ function init() {
     document.getElementById('shareBtn')?.addEventListener('click', shareResult);
     document.getElementById('playAgainBtn')?.addEventListener('click', startNewGame);
     
+    // Показываем помощь при первом запуске
     if (!localStorage.getItem('wordle_has_played')) {
         showHelpModal();
         localStorage.setItem('wordle_has_played', 'true');
@@ -509,6 +574,9 @@ function init() {
     if (new URLSearchParams(window.location.search).get('view') === 'stats') {
         showStatsModal();
     }
+    
+    // Автофокус для мобильных
+    setTimeout(focusInput, 500);
 }
 
 if (document.readyState === 'loading') {
