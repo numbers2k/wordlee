@@ -41,7 +41,7 @@ wordlee/
 │   ├── index.html      # Разметка
 │   ├── styles.css      # Стили + responsive
 │   ├── script.js       # Игровая логика
-│   └── words.js        # Словарь (25,334 слова)
+│   └── words.js        # Словарь (25,323 слова)
 ├── bot/                # Telegram Bot
 │   ├── bot.py          # Команды бота
 │   ├── requirements.txt
