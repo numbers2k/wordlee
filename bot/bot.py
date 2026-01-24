@@ -240,12 +240,12 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             "ℹ️ *О боте Wordlee*\n\n"
             f"*Версия:* {BOT_VERSION}\n"
             "*Словарь:* 26,540 слов\n"
-            "*Автор:* [@boik_off](https://t.me/boik_off)\n"
             "*Платформа:* Telegram Mini Apps\n\n"
             "*Особенности:*\n"
             "• Бесконечный режим игры\n"
             "• Автосохранение прогресса\n"
-            "• Работает на всех устройствах"
+            "• Работает на всех устройствах\n\n"
+            "автор: [@boik_off](https://t.me/boik_off)"
         )
         
         await update.message.reply_text(
@@ -392,12 +392,12 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 "ℹ️ *О боте Wordlee*\n\n"
                 f"*Версия:* {BOT_VERSION}\n"
                 "*Словарь:* 26,540 слов\n"
-                "*Автор:* [@boik_off](https://t.me/boik_off)\n"
                 "*Платформа:* Telegram Mini Apps\n\n"
                 "*Особенности:*\n"
                 "• Бесконечный режим игры\n"
                 "• Автосохранение прогресса\n"
-                "• Работает на всех устройствах"
+                "• Работает на всех устройствах\n\n"
+                "автор: [@boik_off](https://t.me/boik_off)"
             )
             await query.edit_message_text(
                 about_text,
