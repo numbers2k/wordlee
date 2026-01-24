@@ -1,13 +1,12 @@
 /**
  * Wordle RU - Telegram Mini App
- * Бесконечный режим - угадывай слова без ограничений
  */
 
 const WORD_LENGTH = 5;
 const MAX_ATTEMPTS = 6;
 const FLIP_DURATION = 500;
 const FLIP_DELAY = 300;
-const STORAGE_KEY = 'wordle_current_game';
+const STORAGE_KEY = 'wordle_game';
 
 let gameState = {
     targetWord: '',
@@ -16,60 +15,10 @@ let gameState = {
     board: [],
     gameOver: false,
     won: false,
-    evaluations: [],
-    gameNumber: 0
+    evaluations: []
 };
 
 let tg = null;
-
-// Debug mode
-const DEBUG_MODE = new URLSearchParams(window.location.search).get('debug') === 'true';
-let debugPanel = null;
-
-function debugLog(...args) {
-    if (DEBUG_MODE) {
-        console.log('[Wordle]', ...args);
-        if (debugPanel) {
-            const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
-            const line = document.createElement('div');
-            line.textContent = `${new Date().toLocaleTimeString()}: ${msg}`;
-            line.style.borderBottom = '1px solid #333';
-            line.style.padding = '2px 0';
-            debugPanel.insertBefore(line, debugPanel.firstChild);
-            while (debugPanel.children.length > 15) {
-                debugPanel.removeChild(debugPanel.lastChild);
-            }
-        }
-    }
-}
-
-function createDebugPanel() {
-    if (!DEBUG_MODE) return;
-    
-    debugPanel = document.createElement('div');
-    debugPanel.style.cssText = `
-        position: fixed; bottom: 0; left: 0; right: 0;
-        max-height: 120px; overflow-y: auto;
-        background: rgba(0,0,0,0.9); color: #0f0;
-        font-size: 10px; font-family: monospace;
-        padding: 5px; z-index: 9999; border-top: 2px solid #0f0;
-    `;
-    document.body.appendChild(debugPanel);
-    
-    const btns = [
-        ['Clear', () => { localStorage.clear(); debugLog('Storage cleared!'); }],
-        ['Keys', () => { debugLog('Keys:', Object.keys(localStorage)); }],
-        ['State', () => { debugLog('gameState:', gameState); }]
-    ];
-    
-    btns.forEach(([text, fn]) => {
-        const btn = document.createElement('button');
-        btn.textContent = text;
-        btn.style.cssText = 'margin: 3px; padding: 3px 8px; font-size: 11px;';
-        btn.onclick = fn;
-        debugPanel.appendChild(btn);
-    });
-}
 
 function initTelegram() {
     try {
@@ -325,9 +274,7 @@ function showLossMessage(word) {
             answerDisplay = document.createElement('div');
             answerDisplay.className = 'correct-answer-display';
             const modalBody = statsModal.querySelector('.modal-body');
-            if (modalBody) {
-                modalBody.insertBefore(answerDisplay, modalBody.firstChild);
-            }
+            if (modalBody) modalBody.insertBefore(answerDisplay, modalBody.firstChild);
         }
         answerDisplay.innerHTML = `
             <div class="loss-message">
@@ -351,7 +298,6 @@ function updateKeyboard(letter, status) {
     key.dataset.status = status;
 }
 
-// Statistics
 function loadStats() {
     try {
         const saved = localStorage.getItem('wordle_stats');
@@ -416,7 +362,6 @@ function displayStats() {
     if (el('playAgainBtn')) el('playAgainBtn').style.display = gameState.gameOver ? 'inline-flex' : 'none';
 }
 
-// Game state persistence
 function saveGameState() {
     try {
         const state = {
@@ -426,30 +371,19 @@ function saveGameState() {
             gameOver: gameState.gameOver,
             won: gameState.won,
             evaluations: gameState.evaluations.map(row => row ? [...row] : null),
-            targetWord: gameState.targetWord,
-            gameNumber: gameState.gameNumber,
-            timestamp: Date.now()
+            targetWord: gameState.targetWord
         };
-        
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        debugLog('Saved:', { row: state.currentRow, tile: state.currentTile, over: state.gameOver });
-    } catch (e) {
-        console.error('Save failed:', e);
-    }
+    } catch {}
 }
 
 function loadGameState() {
     try {
         const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-            const state = JSON.parse(saved);
-            debugLog('Loaded:', { row: state.currentRow, tile: state.currentTile, over: state.gameOver });
-            return state;
-        }
-    } catch (e) {
-        console.error('Load failed:', e);
+        return saved ? JSON.parse(saved) : null;
+    } catch {
+        return null;
     }
-    return null;
 }
 
 function setupAutosave() {
@@ -466,11 +400,9 @@ function setupAutosave() {
 }
 
 function restoreGameState(state) {
-    // Validate state
     if (!Array.isArray(state.evaluations)) state.evaluations = [];
     if (!Array.isArray(state.board)) return false;
     
-    // Find correct currentRow
     let completedRows = 0;
     for (let i = 0; i < MAX_ATTEMPTS; i++) {
         if (state.evaluations[i] && state.evaluations[i].length === WORD_LENGTH) {
@@ -484,7 +416,6 @@ function restoreGameState(state) {
         state.currentTile = currentRowContent.filter(c => c && c !== '').length;
     }
     
-    // Copy state
     gameState.board = state.board;
     gameState.currentRow = state.currentRow;
     gameState.currentTile = state.currentTile;
@@ -492,9 +423,7 @@ function restoreGameState(state) {
     gameState.won = state.won;
     gameState.evaluations = state.evaluations;
     gameState.targetWord = state.targetWord;
-    gameState.gameNumber = state.gameNumber;
     
-    // Restore visual state
     for (let row = 0; row < MAX_ATTEMPTS; row++) {
         const rowData = state.board[row];
         if (!rowData) continue;
@@ -515,14 +444,10 @@ function restoreGameState(state) {
             }
         }
     }
-    
-    debugLog('Restored game, row:', gameState.currentRow, 'tile:', gameState.currentTile);
     return true;
 }
 
 function startNewGame() {
-    debugLog('Starting new game...');
-    
     gameState = {
         targetWord: getRandomWord(),
         currentRow: 0,
@@ -530,23 +455,19 @@ function startNewGame() {
         board: [],
         gameOver: false,
         won: false,
-        evaluations: [],
-        gameNumber: Date.now()
+        evaluations: []
     };
     
     createBoard();
     resetKeyboard();
     hideStatsModal();
     
-    // Clear loss message
     const answerDisplay = document.querySelector('.correct-answer-display');
     if (answerDisplay) answerDisplay.remove();
     
     saveGameState();
-    debugLog('New game started, word:', gameState.targetWord);
 }
 
-// Modals
 function showHelpModal() {
     const modal = document.getElementById('helpModal');
     if (modal) modal.classList.add('active');
@@ -570,7 +491,6 @@ function hideStatsModal() {
 
 function shareResult() {
     const attempts = gameState.won ? gameState.currentRow + 1 : 'X';
-    
     let text = `Wordle RU ${attempts}/${MAX_ATTEMPTS}\n\n`;
     
     for (let row = 0; row < gameState.evaluations.length; row++) {
@@ -588,7 +508,6 @@ function shareResult() {
         .catch(() => showToast('Не удалось скопировать', 2000, 'error'));
 }
 
-// Input handlers
 function handleKeyClick(e) {
     const key = e.target.closest('.key');
     if (!key) return;
@@ -620,31 +539,21 @@ function handleModalClick(e) {
     }
 }
 
-// Init
 function init() {
-    createDebugPanel();
-    debugLog('Init started');
-    
     initTelegram();
     
-    // Try to restore saved game
     const saved = loadGameState();
-    
     if (saved && saved.board && saved.board.length > 0 && !saved.gameOver) {
-        // Restore in-progress game
         gameState.targetWord = saved.targetWord || getRandomWord();
         createBoard();
         resetKeyboard();
         restoreGameState(saved);
-        debugLog('Restored in-progress game');
     } else {
-        // Start new game
         startNewGame();
     }
     
     setupAutosave();
     
-    // Event listeners
     document.getElementById('keyboard')?.addEventListener('click', handleKeyClick);
     document.addEventListener('keydown', handleKeyDown);
     
@@ -657,13 +566,10 @@ function init() {
     document.getElementById('shareBtn')?.addEventListener('click', shareResult);
     document.getElementById('playAgainBtn')?.addEventListener('click', startNewGame);
     
-    // Show help on first visit
-    if (!localStorage.getItem('wordle_has_played')) {
+    if (!localStorage.getItem('wordle_played')) {
         showHelpModal();
-        localStorage.setItem('wordle_has_played', 'true');
+        localStorage.setItem('wordle_played', 'true');
     }
-    
-    debugLog('Init complete');
 }
 
 if (document.readyState === 'loading') {

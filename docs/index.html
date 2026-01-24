@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="dark">
     <meta name="theme-color" content="#121213">
     <title>Wordle RU</title>
-    <link rel="stylesheet" href="styles.css?v=2">
+    <link rel="stylesheet" href="styles.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body class="dark-theme">
@@ -37,7 +37,6 @@
         </main>
 
         <div class="keyboard" id="keyboard">
-            <!-- First row: 12 keys -->
             <div class="keyboard-row">
                 <button class="key" data-key="й">й</button>
                 <button class="key" data-key="ц">ц</button>
@@ -52,7 +51,6 @@
                 <button class="key" data-key="х">х</button>
                 <button class="key" data-key="ъ">ъ</button>
             </div>
-            <!-- Second row: 11 keys with offset (like iOS keyboard) -->
             <div class="keyboard-row keyboard-row-offset">
                 <div class="spacer-half"></div>
                 <button class="key" data-key="ф">ф</button>
@@ -68,11 +66,8 @@
                 <button class="key" data-key="э">э</button>
                 <div class="spacer-half"></div>
             </div>
-            <!-- Third row: Enter + 9 keys + Backspace -->
             <div class="keyboard-row">
-                <button class="key key-action" data-key="Enter">
-                    <span>OK</span>
-                </button>
+                <button class="key key-action" data-key="Enter">OK</button>
                 <button class="key" data-key="я">я</button>
                 <button class="key" data-key="ч">ч</button>
                 <button class="key" data-key="с">с</button>
@@ -135,8 +130,7 @@
                     <p class="example-desc">Буквы <strong>А</strong> нет в слове.</p>
                 </div>
                 
-                <p class="hint">Каждый день — новое слово!</p>
-                <p class="hint">После игры можно продолжить в бесконечном режиме.</p>
+                <p class="hint">Играй сколько хочешь!</p>
             </div>
         </div>
     </div>
@@ -195,7 +189,7 @@
 
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="words.js?v=4"></script>
-    <script src="script.js?v=4"></script>
+    <script src="words.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
