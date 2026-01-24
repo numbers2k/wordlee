@@ -49,38 +49,6 @@ wordlee/
 └── README.md
 ```
 
-## Локальный запуск
-
-### Frontend
-```bash
-cd docs
-python3 -m http.server 8080
-# Открой http://localhost:8080
-```
-
-### Bot
-```bash
-cd bot
-pip install -r requirements.txt
-cp .env.example .env
-# Добавь BOT_TOKEN в .env
-python bot.py
-```
-
-## Деплой
-
-### GitHub Pages
-1. Settings → Pages
-2. Branch: `main`, Folder: `/docs`
-3. Save
-
-### Telegram Bot
-1. [@BotFather](https://t.me/BotFather) → `/newbot`
-2. Bot Settings → Menu Button → указать URL приложения
-3. **Деплой бота на сервер** (см. `bot/DEPLOY.md`)
-   - GitHub Pages **НЕ** может запускать Python-скрипты
-   - Нужен сервер: Railway, Render, Fly.io или VPS
-
 ## Технологии
 
 - **Frontend:** HTML, CSS, JavaScript (vanilla)
