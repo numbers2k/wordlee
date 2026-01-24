@@ -1,5 +1,5 @@
 /**
- * Wordle RU - Telegram Mini App
+ * Wordlee - Telegram Mini App
  */
 
 const WORD_LENGTH = 5;
@@ -491,7 +491,7 @@ function hideStatsModal() {
 
 function shareResult() {
     const attempts = gameState.won ? gameState.currentRow + 1 : 'X';
-    let text = `Wordle RU ${attempts}/${MAX_ATTEMPTS}\n\n`;
+    let text = `Wordlee ${attempts}/${MAX_ATTEMPTS}\n\n`;
     
     for (let row = 0; row < gameState.evaluations.length; row++) {
         if (!gameState.evaluations[row]) continue;

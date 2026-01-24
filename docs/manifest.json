@@ -1,6 +1,6 @@
 {
-    "name": "Wordle RU",
-    "short_name": "Wordle",
+    "name": "Wordlee",
+    "short_name": "Wordlee",
     "description": "Угадай слово из 5 букв за 6 попыток",
     "start_url": "/",
     "display": "standalone",

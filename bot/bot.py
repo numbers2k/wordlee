@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Wordle RU - Telegram Bot
+"""Wordlee - Telegram Bot
 
-Полнофункциональный бот для игры Wordle на русском языке.
+Полнофункциональный бот для игры Wordlee на русском языке.
 Поддерживает личные чаты и группы.
 """
 
@@ -79,7 +79,7 @@ def get_help_keyboard() -> InlineKeyboardMarkup:
 def get_share_keyboard() -> InlineKeyboardMarkup:
     """Клавиатура для поделиться."""
     keyboard = [
-        [InlineKeyboardButton(text="📤 Переслать друзьям", switch_inline_query=f"Играй в Wordle RU! 🎮")],
+        [InlineKeyboardButton(text="📤 Переслать друзьям", switch_inline_query=f"Играй в Wordlee! 🎮")],
         [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -109,7 +109,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if chat_type == ChatType.PRIVATE:
             welcome_text = (
                 f"Привет, {user.first_name}! 👋\n\n"
-                "🎮 *Wordle RU* — угадай слово из 5 букв за 6 попыток!\n\n"
+                "🎮 *Wordlee* — угадай слово из 5 букв за 6 попыток!\n\n"
                 "🟩 Зелёный — буква на правильном месте\n"
                 "🟨 Жёлтый — буква есть, но не там\n"
                 "⬜ Серый — такой буквы нет в слове\n\n"
@@ -120,7 +120,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         else:
             welcome_text = (
                 f"Привет, {update.effective_chat.title}! 👋\n\n"
-                "🎮 *Wordle RU* теперь и в этом чате!\n\n"
+                "🎮 *Wordlee* теперь и в этом чате!\n\n"
                 "Угадай слово из 5 букв за 6 попыток.\n"
                 "Нажми кнопку ниже, чтобы начать игру!"
             )
@@ -160,7 +160,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             return
         logger.info(f"Received /help from user {update.effective_user.id}")
         help_text = (
-            "📖 *Как играть в Wordle RU*\n\n"
+            "📖 *Как играть в Wordlee*\n\n"
             "*Цель:* угадать слово из 5 букв за 6 попыток.\n\n"
             "*Подсказки после каждой попытки:*\n"
             "🟩 — буква угадана и стоит на своём месте\n"
@@ -220,7 +220,7 @@ async def share_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         logger.info(f"Received /share from user {update.effective_user.id}")
         # Используем код-форматирование вместо Markdown для username, чтобы избежать курсива
         share_text = (
-            "🎮 *Wordle RU*\n\n"
+            "🎮 *Wordlee*\n\n"
             "Попробуй угадать слово из 5 букв за 6 попыток!\n\n"
             f"👉 `@{BOT_USERNAME}`\n\n"
             "🟩🟨⬜ Увлекательная словесная головоломка на русском языке!"
@@ -243,7 +243,7 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             return
         logger.info(f"Received /about from user {update.effective_user.id}")
         about_text = (
-            "ℹ️ *О боте Wordle RU*\n\n"
+            "ℹ️ *О боте Wordlee*\n\n"
             f"*Версия:* {BOT_VERSION}\n"
             "*Словарь:* ~1500 слов\n"
             "*Платформа:* Telegram Mini Apps\n\n"
@@ -269,7 +269,7 @@ async def handle_new_chat_members(update: Update, context: ContextTypes.DEFAULT_
             if member.id == context.bot.id:
                 welcome_text = (
                     "👋 Привет! Спасибо, что добавили меня!\n\n"
-                    "🎮 *Wordle RU* — угадай слово из 5 букв за 6 попыток.\n\n"
+                    "🎮 *Wordlee* — угадай слово из 5 букв за 6 попыток.\n\n"
                     "*Команды:*\n"
                     "/play — начать игру\n"
                     "/help — правила\n"
@@ -329,7 +329,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             user = update.effective_user
             welcome_text = (
                 f"Привет, {user.first_name}! 👋\n\n"
-                "🎮 *Wordle RU* — угадай слово из 5 букв за 6 попыток!\n\n"
+                "🎮 *Wordlee* — угадай слово из 5 букв за 6 попыток!\n\n"
                 "🟩 Зелёный — буква на правильном месте\n"
                 "🟨 Жёлтый — буква есть, но не там\n"
                 "⬜ Серый — такой буквы нет в слове\n\n"
@@ -345,7 +345,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         
         elif query.data == "help":
             help_text = (
-                "📖 *Как играть в Wordle RU*\n\n"
+                "📖 *Как играть в Wordlee*\n\n"
                 "*Цель:* угадать слово из 5 букв за 6 попыток.\n\n"
                 "*Подсказки после каждой попытки:*\n"
                 "🟩 — буква угадана и стоит на своём месте\n"
@@ -387,7 +387,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         
         elif query.data == "share":
             share_text = (
-                "🎮 *Wordle RU*\n\n"
+                "🎮 *Wordlee*\n\n"
                 "Попробуй угадать слово из 5 букв за 6 попыток!\n\n"
                 f"👉 `@{BOT_USERNAME}`\n\n"
                 "🟩🟨⬜ Увлекательная словесная головоломка на русском языке!"
@@ -400,7 +400,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         
         elif query.data == "about":
             about_text = (
-                "ℹ️ *О боте Wordle RU*\n\n"
+                "ℹ️ *О боте Wordlee*\n\n"
                 f"*Версия:* {BOT_VERSION}\n"
                 "*Словарь:* ~1500 слов\n"
                 "*Платформа:* Telegram Mini Apps\n\n"
@@ -489,7 +489,7 @@ def main() -> None:
     """Запуск бота."""
     try:
         logger.info("=" * 50)
-        logger.info("Starting Wordle RU bot...")
+        logger.info("Starting Wordlee bot...")
         logger.info(f"WEBAPP_URL: {WEBAPP_URL}")
         logger.info(f"BOT_USERNAME: {BOT_USERNAME}")
         logger.info("=" * 50)

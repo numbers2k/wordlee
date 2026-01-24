@@ -1,6 +1,6 @@
-# Wordle RU — Telegram Mini App
+# Wordlee — Telegram Mini App
 
-Русская версия популярной игры Wordle для Telegram.
+Русская версия популярной игры Wordlee для Telegram.
 
 **Играть:** [@wordlee_ru_bot](https://t.me/wordlee_ru_bot)
 
