@@ -5,7 +5,7 @@ const FLIP_DELAY = 300;
 const STORAGE_KEY = 'wordle_game';
 const API_URL = window.location.hostname === 'localhost' 
     ? 'http://localhost:5000' 
-    : (window.API_URL || 'https://wordlee-api.railway.app');
+    : (window.API_URL || 'https://wordlee-production.up.railway.app');
 
 let gameState = {
     targetWord: '',
