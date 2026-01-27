@@ -14,7 +14,8 @@ let gameState = {
     board: [],
     gameOver: false,
     won: false,
-    evaluations: []
+    evaluations: [],
+    isAnimating: false
 };
 
 let tg = null;
@@ -259,7 +260,7 @@ function resetKeyboard() {
 }
 
 function addLetter(letter) {
-    if (gameState.gameOver || gameState.currentTile >= WORD_LENGTH) return;
+    if (gameState.gameOver || gameState.isAnimating || gameState.currentTile >= WORD_LENGTH) return;
     
     const { currentRow: row, currentTile: col } = gameState;
     gameState.board[row][col] = letter.toUpperCase();
@@ -274,7 +275,7 @@ function addLetter(letter) {
 }
 
 function removeLetter() {
-    if (gameState.gameOver || gameState.currentTile <= 0) return;
+    if (gameState.gameOver || gameState.isAnimating || gameState.currentTile <= 0) return;
     
     gameState.currentTile--;
     const { currentRow: row, currentTile: col } = gameState;
@@ -289,7 +290,7 @@ function removeLetter() {
 }
 
 function submitWord() {
-    if (gameState.gameOver) return;
+    if (gameState.gameOver || gameState.isAnimating) return;
     
     if (gameState.currentTile < WORD_LENGTH) {
         shakeRow(gameState.currentRow);
@@ -305,11 +306,15 @@ function submitWord() {
         return;
     }
     
+    gameState.isAnimating = true;
     const evaluation = evaluateGuess(guess);
     gameState.evaluations[gameState.currentRow] = evaluation;
     revealRow(gameState.currentRow, evaluation);
     
+    const animationDuration = WORD_LENGTH * FLIP_DELAY + FLIP_DURATION;
     setTimeout(() => {
+        gameState.isAnimating = false;
+        
         if (normalizeWord(guess) === normalizeWord(gameState.targetWord)) {
             gameState.won = true;
             gameState.gameOver = true;
@@ -326,7 +331,7 @@ function submitWord() {
             gameState.currentTile = 0;
         }
         saveGameState();
-    }, WORD_LENGTH * FLIP_DELAY + FLIP_DURATION);
+    }, animationDuration);
 }
 
 function evaluateGuess(guess) {
@@ -602,6 +607,7 @@ function restoreGameState(state) {
     gameState.won = state.won;
     gameState.evaluations = state.evaluations;
     gameState.targetWord = state.targetWord;
+    gameState.isAnimating = false;
     
     for (let row = 0; row < MAX_ATTEMPTS; row++) {
         const rowData = state.board[row];
@@ -634,7 +640,8 @@ function startNewGame() {
         board: [],
         gameOver: false,
         won: false,
-        evaluations: []
+        evaluations: [],
+        isAnimating: false
     };
     
     createBoard();
@@ -800,11 +807,15 @@ function handleModalClick(e) {
 async function init() {
     initTelegram();
     getUserId();
-    await migrateLocalStorageToAPI();
+    
     const stats = await loadStatsFromAPI();
-    if (stats) {
-        updatePointsCounter(stats.totalPoints || 0);
+    if (stats && stats.totalPoints !== undefined) {
+        updatePointsCounter(stats.totalPoints);
+    } else {
+        updatePointsCounter(0);
     }
+    
+    await migrateLocalStorageToAPI();
     
     const urlParams = new URLSearchParams(window.location.search);
     const view = urlParams.get('view');
@@ -853,8 +864,6 @@ async function init() {
             hideLeaderboardModal();
         }
     });
-    
-    updatePointsCounter();
     
     if (!localStorage.getItem('wordle_played')) {
         showHelpModal();
