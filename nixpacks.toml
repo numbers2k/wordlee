@@ -1,11 +1,12 @@
 [phases.setup]
-nixPkgs = ["python311", "python311Packages.pip", "postgresql"]
+nixPkgs = ["python311", "python311Packages.pip", "postgresql_15"]
 
 [phases.install]
 cmds = [
   "cd bot && python3 -m venv venv",
-  "cd bot && source venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt"
+  "cd bot && source venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt",
+  "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nix/store/*postgresql*/lib"
 ]
 
 [start]
-cmd = "cd bot && source venv/bin/activate && python3 api.py"
+cmd = "cd bot && source venv/bin/activate && export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/nix/store/*postgresql*/lib && python3 api.py"
