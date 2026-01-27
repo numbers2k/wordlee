@@ -92,6 +92,32 @@ body {
     flex-shrink: 0;
 }
 
+.toolbar-left,
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.points-counter {
+    display: flex;
+    align-items: center;
+    padding: 4px 10px;
+    background: rgba(83, 141, 78, 0.15);
+    border: 1px solid rgba(83, 141, 78, 0.3);
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-correct);
+    min-width: 50px;
+    justify-content: center;
+}
+
+.points-counter-value {
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
 .icon-btn {
     background: none;
     border: none;

@@ -387,7 +387,7 @@ function celebrateWin() {
     const row = document.querySelector(`.row[data-row="${gameState.currentRow}"]`);
     if (!row) return;
     
-    const messages = ['Гениально!', 'Великолепно!', 'Отлично!', 'Неплохо!', 'Хорошо!', 'Успел!'];
+    const messages = ['Гениально!', 'Великолепно!', 'Отлично!', 'Неплохо!', 'Хорошо!', 'Молодец!'];
     showToast(messages[gameState.currentRow], 3000, 'success');
     
     row.querySelectorAll('.tile').forEach((tile, i) => {
@@ -463,6 +463,7 @@ async function updateStats(won, attempts = 0) {
         } else {
             statsCache.currentStreak = 0;
         }
+        updatePointsCounter(statsCache.totalPoints || 0);
     } else {
         const stats = loadStats();
         stats.gamesPlayed++;
@@ -478,10 +479,18 @@ async function updateStats(won, attempts = 0) {
             stats.currentStreak = 0;
         }
         saveStats(stats);
+        updatePointsCounter(stats.totalPoints || 0);
     }
     
     if (won && pointsEarned > 0) {
         setTimeout(() => showToast(`+${pointsEarned} очков!`, 2000, 'success'), 1000);
+    }
+}
+
+function updatePointsCounter(points) {
+    const counter = document.getElementById('pointsCounterValue');
+    if (counter) {
+        counter.textContent = (points || 0).toLocaleString('ru-RU');
     }
 }
 
@@ -501,6 +510,8 @@ async function displayStats() {
     if (el('totalPoints')) {
         el('totalPoints').textContent = (stats.totalPoints || 0).toLocaleString('ru-RU');
     }
+    
+    updatePointsCounter(stats.totalPoints || 0);
     
     const dist = el('distribution');
     if (dist) {
@@ -837,6 +848,8 @@ async function init() {
             hideLeaderboardModal();
         }
     });
+    
+    updatePointsCounter();
     
     if (!localStorage.getItem('wordle_played')) {
         showHelpModal();
