@@ -236,7 +236,7 @@ async def leaderboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text(
             "🏆 *Лидерборд*\n\n"
             "Смотри топ игроков по количеству очков!\n"
-            "Очки начисляются за каждую победу:\n"
+            "Очки начисляются за каждую победу:\n\n"
             "• 1 попытка — 1000 очков\n"
             "• 2 попытки — 800 очков\n"
             "• 3 попытки — 600 очков\n"
@@ -425,7 +425,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             leaderboard_text = (
                 "🏆 *Лидерборд*\n\n"
                 "Смотри топ игроков по количеству очков!\n"
-                "Очки начисляются за каждую победу:\n"
+                "Очки начисляются за каждую победу:\n\n"
                 "• 1 попытка — 1000 очков\n"
                 "• 2 попытки — 800 очков\n"
                 "• 3 попытки — 600 очков\n"
