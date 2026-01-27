@@ -799,7 +799,10 @@ async function init() {
     initTelegram();
     getUserId();
     await migrateLocalStorageToAPI();
-    await loadStatsFromAPI();
+    const stats = await loadStatsFromAPI();
+    if (stats) {
+        updatePointsCounter(stats.totalPoints || 0);
+    }
     
     const urlParams = new URLSearchParams(window.location.search);
     const view = urlParams.get('view');
