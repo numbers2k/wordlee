@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""Wordlee - Telegram Bot
-
-Полнофункциональный бот для игры Wordlee на русском языке.
-Поддерживает личные чаты и группы.
-"""
 
 import os
 import logging
@@ -21,32 +16,28 @@ from telegram.constants import ChatType
 
 load_dotenv()
 
-# Logging configuration
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     level=logging.INFO,
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger(__name__)
-
-# Отключаем избыточные логи от httpx
 logging.getLogger('httpx').setLevel(logging.WARNING)
 
-# Bot configuration
 BOT_TOKEN = os.environ['BOT_TOKEN']
 WEBAPP_URL = os.getenv('WEBAPP_URL', 'https://numbers2k.github.io/wordlee')
 BOT_USERNAME = os.getenv('BOT_USERNAME', 'wordlee_ru_bot')
-BOT_VERSION = '1.2.2'
+BOT_VERSION = '1.3.0'
 
 
 def get_main_keyboard() -> InlineKeyboardMarkup:
-    """Создаёт основную клавиатуру с кнопками."""
     keyboard = [
         [InlineKeyboardButton(text="🎮 Играть", web_app=WebAppInfo(url=WEBAPP_URL))],
         [
             InlineKeyboardButton(text="📖 Правила", callback_data="help"),
             InlineKeyboardButton(text="📊 Статистика", callback_data="stats")
         ],
+        [InlineKeyboardButton(text="🏆 Лидерборд", callback_data="leaderboard")],
         [InlineKeyboardButton(text="📤 Поделиться", callback_data="share")],
         [InlineKeyboardButton(text="ℹ️ О боте", callback_data="about")]
     ]
@@ -54,7 +45,6 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
 
 
 def get_play_keyboard() -> InlineKeyboardMarkup:
-    """Клавиатура с кнопкой игры и главным меню."""
     keyboard = [
         [InlineKeyboardButton(text="🎮 Играть", web_app=WebAppInfo(url=WEBAPP_URL))],
         [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
@@ -63,16 +53,15 @@ def get_play_keyboard() -> InlineKeyboardMarkup:
 
 
 def get_stats_keyboard() -> InlineKeyboardMarkup:
-    """Клавиатура для статистики."""
     keyboard = [
         [InlineKeyboardButton(text="📊 Открыть статистику", web_app=WebAppInfo(url=f"{WEBAPP_URL}?view=stats"))],
+        [InlineKeyboardButton(text="🏆 Лидерборд", callback_data="leaderboard")],
         [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
     ]
     return InlineKeyboardMarkup(keyboard)
 
 
 def get_help_keyboard() -> InlineKeyboardMarkup:
-    """Клавиатура для правил."""
     keyboard = [
         [InlineKeyboardButton(text="🎮 Играть", web_app=WebAppInfo(url=WEBAPP_URL))],
         [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
@@ -81,7 +70,6 @@ def get_help_keyboard() -> InlineKeyboardMarkup:
 
 
 def get_share_keyboard() -> InlineKeyboardMarkup:
-    """Клавиатура для поделиться."""
     keyboard = [
         [InlineKeyboardButton(text="📤 Переслать друзьям", switch_inline_query=f"Играй в Wordlee! 🎮")],
         [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
@@ -90,7 +78,6 @@ def get_share_keyboard() -> InlineKeyboardMarkup:
 
 
 def get_about_keyboard() -> InlineKeyboardMarkup:
-    """Клавиатура для информации о боте."""
     keyboard = [
         [InlineKeyboardButton(text="🎮 Играть", web_app=WebAppInfo(url=WEBAPP_URL))],
         [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
@@ -99,7 +86,6 @@ def get_about_keyboard() -> InlineKeyboardMarkup:
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик команды /start — приветствие и главное меню."""
     try:
         if not update.message:
             logger.warning("Received /start but update.message is None")
@@ -110,7 +96,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         username = user.username or 'без username'
         logger.info(f"👤 USER ACTION: /start | User: {user.id} (@{username}) | Name: {user.first_name} | Chat: {chat_type}")
         
-        # Разное приветствие для личных чатов и групп
         if chat_type == ChatType.PRIVATE:
             welcome_text = (
                 f"Привет, {user.first_name}! 👋\n\n"
@@ -143,7 +128,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def play_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик команды /play — быстрый запуск игры."""
     try:
         if not update.message:
             logger.warning("Received /play but update.message is None")
@@ -160,7 +144,6 @@ async def play_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик команды /help — правила игры."""
     try:
         if not update.message:
             logger.warning("Received /help but update.message is None")
@@ -192,7 +175,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик команды /stats — статистика игрока."""
     try:
         if not update.message:
             logger.warning("Received /stats but update.message is None")
@@ -203,11 +185,12 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         
         await update.message.reply_text(
             "📊 *Твоя статистика*\n\n"
-            "Статистика сохраняется в приложении и включает:\n"
+            "Статистика синхронизируется между устройствами и включает:\n"
             "• Количество сыгранных игр\n"
             "• Процент побед\n"
             "• Текущую серию побед\n"
             "• Лучшую серию\n"
+            "• Общее количество очков\n"
             "• Распределение попыток\n\n"
             "Нажми кнопку ниже, чтобы посмотреть!",
             reply_markup=get_stats_keyboard(),
@@ -218,7 +201,6 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 async def share_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик команды /share — поделиться ботом."""
     try:
         if not update.message:
             logger.warning("Received /share but update.message is None")
@@ -242,8 +224,38 @@ async def share_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         logger.error(f"Error in share_command: {e}", exc_info=True)
 
 
+async def leaderboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        if not update.message:
+            logger.warning("Received /leaderboard but update.message is None")
+            return
+        user = update.effective_user
+        username = user.username or 'без username'
+        logger.info(f"🏆 USER ACTION: /leaderboard | User: {user.id} (@{username}) | Name: {user.first_name}")
+        
+        await update.message.reply_text(
+            "🏆 *Лидерборд*\n\n"
+            "Смотри топ игроков по количеству очков!\n"
+            "Очки начисляются за каждую победу:\n"
+            "• 1 попытка — 1000 очков\n"
+            "• 2 попытки — 800 очков\n"
+            "• 3 попытки — 600 очков\n"
+            "• 4 попытки — 400 очков\n"
+            "• 5 попыток — 200 очков\n"
+            "• 6 попыток — 100 очков\n\n"
+            "Нажми кнопку ниже, чтобы открыть лидерборд!",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton(text="🏆 Открыть лидерборд", web_app=WebAppInfo(url=f"{WEBAPP_URL}?view=leaderboard"))
+            ], [
+                InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")
+            ]]),
+            parse_mode='Markdown'
+        )
+    except Exception as e:
+        logger.error(f"Error in leaderboard_command: {e}", exc_info=True)
+
+
 async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик команды /about — информация о боте."""
     try:
         if not update.message:
             logger.warning("Received /about but update.message is None")
@@ -256,6 +268,10 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             f"*Версия:* {BOT_VERSION}\n"
             "*Словарь:* 24,336 слов\n"
             "*Платформа:* Telegram Mini Apps\n\n"
+            "*Новое в v1.3.0:*\n"
+            "• Синхронизация между устройствами\n"
+            "• Система очков и лидерборд\n"
+            "• Улучшенный интерфейс\n\n"
             "*Особенности:*\n"
             "• Бесконечный режим игры\n"
             "• Автосохранение прогресса\n"
@@ -273,7 +289,6 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 async def handle_new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик добавления бота в группу."""
     try:
         for member in update.message.new_chat_members:
             if member.id == context.bot.id:
@@ -299,7 +314,6 @@ async def handle_new_chat_members(update: Update, context: ContextTypes.DEFAULT_
 
 
 async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик текстовых сообщений в личных чатах."""
     try:
         if update.effective_chat.type != ChatType.PRIVATE:
             return
@@ -321,6 +335,7 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
                 "/play — начать игру\n"
                 "/help — правила\n"
                 "/stats — статистика\n"
+                "/leaderboard — лидерборд\n"
                 "/share — поделиться\n"
                 "/about — о боте",
                 reply_markup=get_play_keyboard()
@@ -330,7 +345,6 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик нажатий на inline-кнопки."""
     try:
         query = update.callback_query
         await query.answer()
@@ -380,11 +394,12 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         elif query.data == "stats":
             stats_text = (
                 "📊 *Твоя статистика*\n\n"
-                "Статистика сохраняется в приложении и включает:\n"
+                "Статистика синхронизируется между устройствами и включает:\n"
                 "• Количество сыгранных игр\n"
                 "• Процент побед\n"
                 "• Текущую серию побед\n"
                 "• Лучшую серию\n"
+                "• Общее количество очков\n"
                 "• Распределение попыток\n\n"
                 "Нажми кнопку ниже, чтобы посмотреть!"
             )
@@ -406,12 +421,39 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 parse_mode='Markdown'
             )
         
+        elif query.data == "leaderboard":
+            leaderboard_text = (
+                "🏆 *Лидерборд*\n\n"
+                "Смотри топ игроков по количеству очков!\n"
+                "Очки начисляются за каждую победу:\n"
+                "• 1 попытка — 1000 очков\n"
+                "• 2 попытки — 800 очков\n"
+                "• 3 попытки — 600 очков\n"
+                "• 4 попытки — 400 очков\n"
+                "• 5 попыток — 200 очков\n"
+                "• 6 попыток — 100 очков\n\n"
+                "Нажми кнопку ниже, чтобы открыть лидерборд!"
+            )
+            await query.edit_message_text(
+                leaderboard_text,
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton(text="🏆 Открыть лидерборд", web_app=WebAppInfo(url=f"{WEBAPP_URL}?view=leaderboard"))
+                ], [
+                    InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")
+                ]]),
+                parse_mode='Markdown'
+            )
+        
         elif query.data == "about":
             about_text = (
                 "ℹ️ *О боте Wordlee*\n\n"
                 f"*Версия:* {BOT_VERSION}\n"
                 "*Словарь:* 24,336 слов\n"
                 "*Платформа:* Telegram Mini Apps\n\n"
+                "*Новое в v1.3.0:*\n"
+                "• Синхронизация между устройствами\n"
+                "• Система очков и лидерборд\n"
+                "• Улучшенный интерфейс\n\n"
                 "*Особенности:*\n"
                 "• Бесконечный режим игры\n"
                 "• Автосохранение прогресса\n"
@@ -429,7 +471,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик неизвестных команд."""
     try:
         if not update.message:
             return
@@ -440,6 +481,7 @@ async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             "/play — начать игру\n"
             "/help — правила\n"
             "/stats — статистика\n"
+            "/leaderboard — лидерборд\n"
             "/share — поделиться\n"
             "/about — о боте",
             reply_markup=get_play_keyboard(),
@@ -450,10 +492,8 @@ async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик ошибок."""
     logger.error(f"Exception while handling an update: {context.error}")
     
-    # Пытаемся уведомить пользователя
     if update and hasattr(update, 'effective_message') and update.effective_message:
         try:
             await update.effective_message.reply_text(
@@ -465,28 +505,25 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 async def post_init(application: Application) -> None:
-    """Инициализация бота после запуска."""
     try:
         logger.info("Initializing bot...")
-        # Установка кнопки меню
         await application.bot.set_chat_menu_button(
             menu_button=MenuButtonWebApp(text="Wordlee!", web_app=WebAppInfo(url=WEBAPP_URL))
         )
         logger.info("Menu button set")
         
-        # Установка команд бота
         commands = [
             ("start", "🎮 Главное меню"),
             ("play", "🎯 Начать игру"),
             ("help", "📖 Правила игры"),
             ("stats", "📊 Моя статистика"),
+            ("leaderboard", "🏆 Лидерборд"),
             ("share", "📤 Поделиться"),
             ("about", "ℹ️ О боте"),
         ]
         await application.bot.set_my_commands(commands)
         logger.info(f"Bot commands registered: {len(commands)} commands")
         
-        # Проверка подключения
         bot_info = await application.bot.get_me()
         logger.info(f"Bot initialized successfully: @{bot_info.username} ({bot_info.first_name})")
     except Exception as e:
@@ -495,7 +532,6 @@ async def post_init(application: Application) -> None:
 
 
 def main() -> None:
-    """Запуск бота."""
     try:
         logger.info("=" * 50)
         logger.info("Starting Wordlee bot...")
@@ -503,33 +539,27 @@ def main() -> None:
         logger.info(f"BOT_USERNAME: {BOT_USERNAME}")
         logger.info("=" * 50)
         
-        # Создание приложения
         application = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
         
-        # Команды (добавляем первыми, чтобы они обрабатывались в первую очередь)
         logger.info("Registering command handlers...")
         application.add_handler(CommandHandler("start", start))
         application.add_handler(CommandHandler("play", play_command))
         application.add_handler(CommandHandler("help", help_command))
         application.add_handler(CommandHandler("stats", stats_command))
+        application.add_handler(CommandHandler("leaderboard", leaderboard_command))
         application.add_handler(CommandHandler("share", share_command))
         application.add_handler(CommandHandler("about", about_command))
-        logger.info("Command handlers registered: 6 commands")
+        logger.info("Command handlers registered: 7 commands")
         
-        # Обработчик inline-кнопок
         application.add_handler(CallbackQueryHandler(handle_callback))
         logger.info("Callback query handler registered")
         
-        # Обработчик добавления бота в группу
         application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, handle_new_chat_members))
         logger.info("New chat members handler registered")
         
-        # Обработчик текстовых сообщений
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
         logger.info("Text message handler registered")
         
-        
-        # Обработчик ошибок
         application.add_error_handler(error_handler)
         logger.info("Error handler registered")
         
@@ -537,10 +567,9 @@ def main() -> None:
         logger.info("Starting polling...")
         logger.info("=" * 50)
         
-        # Запуск бота
         application.run_polling(
             allowed_updates=Update.ALL_TYPES,
-            drop_pending_updates=True  # Игнорируем старые обновления при запуске
+            drop_pending_updates=True
         )
     except KeyboardInterrupt:
         logger.info("Bot stopped by user")
