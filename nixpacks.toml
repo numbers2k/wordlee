@@ -12,3 +12,4 @@ cmds = [
 
 [start]
 cmd = "cd bot && source venv/bin/activate && python3.11 bot.py"
+# v1.3.0

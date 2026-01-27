@@ -582,3 +582,4 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+# v1.3.0

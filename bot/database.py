@@ -191,3 +191,4 @@ def get_user_stats(user_id):
                 FROM users WHERE user_id = %s
             """, (user_id,))
             return cur.fetchone()
+# v1.3.0

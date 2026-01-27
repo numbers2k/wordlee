@@ -867,3 +867,4 @@ if (document.readyState === 'loading') {
 } else {
     init();
 }
+// v1.3.0

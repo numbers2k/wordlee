@@ -183,3 +183,4 @@ if __name__ == '__main__':
         app.run(host='0.0.0.0', port=port, debug=False)
     else:
         logger.error("Failed to initialize database, API server not started")
+# v1.3.0
