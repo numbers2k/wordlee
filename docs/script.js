@@ -159,7 +159,7 @@ async function loadStatsFromAPI() {
 
 async function saveStatsToAPI(won, attempts, pointsEarned) {
     const userId = getUserId();
-    if (!userId) return false;
+    if (!userId) return { success: false, total_points: null };
     
     try {
         const userData = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
@@ -174,17 +174,13 @@ async function saveStatsToAPI(won, attempts, pointsEarned) {
         });
         
         if (data && data.success) {
-            // Update cache
-            if (statsCache) {
-                statsCache.totalPoints = data.total_points || statsCache.totalPoints;
-            }
-            return true;
+            return { success: true, total_points: data.total_points || 0 };
         }
     } catch (error) {
         console.error('Failed to save stats to API:', error);
     }
     
-    return false;
+    return { success: false, total_points: null };
 }
 
 async function migrateLocalStorageToAPI() {
@@ -448,22 +444,28 @@ function saveStats(stats) {
 
 async function updateStats(won, attempts = 0) {
     const pointsEarned = won ? calculatePoints(attempts) : 0;
-    const apiSuccess = await saveStatsToAPI(won, attempts, pointsEarned);
+    const apiResult = await saveStatsToAPI(won, attempts, pointsEarned);
     
-    if (apiSuccess && statsCache) {
-        statsCache.gamesPlayed++;
-        if (won) {
-            statsCache.gamesWon++;
-            statsCache.currentStreak++;
-            statsCache.maxStreak = Math.max(statsCache.maxStreak, statsCache.currentStreak);
-            statsCache.totalPoints += pointsEarned;
-            if (attempts >= 1 && attempts <= 6) {
-                statsCache.guessDistribution[attempts - 1]++;
+    if (apiResult.success) {
+        const stats = await loadStatsFromAPI();
+        if (stats) {
+            statsCache = stats;
+            updatePointsCounter(stats.totalPoints || 0);
+        } else if (statsCache) {
+            statsCache.gamesPlayed++;
+            if (won) {
+                statsCache.gamesWon++;
+                statsCache.currentStreak++;
+                statsCache.maxStreak = Math.max(statsCache.maxStreak, statsCache.currentStreak);
+                statsCache.totalPoints = apiResult.total_points || (statsCache.totalPoints || 0);
+                if (attempts >= 1 && attempts <= 6) {
+                    statsCache.guessDistribution[attempts - 1]++;
+                }
+            } else {
+                statsCache.currentStreak = 0;
             }
-        } else {
-            statsCache.currentStreak = 0;
+            updatePointsCounter(statsCache.totalPoints || 0);
         }
-        updatePointsCounter(statsCache.totalPoints || 0);
     } else {
         const stats = loadStats();
         stats.gamesPlayed++;
