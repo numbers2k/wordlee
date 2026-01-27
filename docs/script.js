@@ -544,10 +544,21 @@ function init() {
     
     const saved = loadGameState();
     if (saved && saved.board && saved.board.length > 0 && !saved.gameOver) {
-        gameState.targetWord = saved.targetWord || getRandomWord();
+        // Проверяем, что сохранённое слово есть в WORDS_TARGET
+        const normalizedSaved = saved.targetWord ? normalizeWord(saved.targetWord) : '';
+        const isValidTarget = normalizedSaved && WORDS_TARGET.some(w => normalizeWord(w) === normalizedSaved);
+        
+        if (isValidTarget) {
+            gameState.targetWord = saved.targetWord;
+        } else {
+            // Если сохранённое слово не в WORDS_TARGET, начинаем новую игру
+            gameState.targetWord = getRandomWord();
+        }
         createBoard();
         resetKeyboard();
-        restoreGameState(saved);
+        if (isValidTarget) {
+            restoreGameState(saved);
+        }
     } else {
         startNewGame();
     }
