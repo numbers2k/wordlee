@@ -36,7 +36,7 @@ logging.getLogger('httpx').setLevel(logging.WARNING)
 BOT_TOKEN = os.environ['BOT_TOKEN']
 WEBAPP_URL = os.getenv('WEBAPP_URL', 'https://numbers2k.github.io/wordlee')
 BOT_USERNAME = os.getenv('BOT_USERNAME', 'wordlee_ru_bot')
-BOT_VERSION = '1.2.0'
+BOT_VERSION = '1.2.2'
 
 
 def get_main_keyboard() -> InlineKeyboardMarkup:
