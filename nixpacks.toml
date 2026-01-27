@@ -6,9 +6,9 @@ PYTHON_VERSION = "3.11"
 
 [phases.install]
 cmds = [
-  "cd bot && python3 -m venv venv",
+  "cd bot && python3.11 -m venv venv",
   "cd bot && source venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt"
 ]
 
 [start]
-cmd = "cd bot && source venv/bin/activate && python3 api.py"
+cmd = "cd bot && source venv/bin/activate && python3.11 bot.py"
