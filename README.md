@@ -6,13 +6,6 @@
 
 **Играть:** [@wordlee_ru_bot](https://t.me/wordlee_ru_bot)
 
-## Скриншоты
-
-<p align="center">
-  <img src="https://img.shields.io/badge/status-working-brightgreen" alt="Status">
-  <img src="https://img.shields.io/badge/platform-Telegram-blue" alt="Platform">
-  <img src="https://img.shields.io/badge/language-Russian-red" alt="Language">
-</p>
 
 ## Геймплей
 
